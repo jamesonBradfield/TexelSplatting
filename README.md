@@ -51,3 +51,23 @@ To keep the "cinematic soul" without melting the CPU, apply these filters before
 - **RIDs are Dangerous**: Your `mass_render.rs` uses `Rid` (Resource IDs). These are raw pointers to Godot's internals. If you don't free them in `drop()`, you will leak memory until your PC chokes.
 - **Don't Use `gd_print!` in the Pulse**: Printing to the console from a 6ms loop will lag the entire editor. Only print when things break.
 - **The Borrow Checker is your Friend**: If Rust says you can't move a variable into a thread, it's because you're about to cause a race condition that would be a nightmare to debug in C++.
+
+---
+
+## 🛑 Developer Note / Technical Debt Warning
+
+**To Future Me (or anyone reading this):** 
+Please don't judge the current state of the architecture too harshly. The `RealtimeProbe` currently works and successfully captures color and depth through a multi-viewport post-processing pipeline, but **it is doing way too much.** 
+
+The current setup violates several separation-of-concern principles:
+- Variables are poorly named or overloaded.
+- The probe manages viewport generation, depth extraction, and signaling all in one massive block.
+- The broader architecture (outside of the probe itself) is messy and needs a serious refactor.
+
+**Next Steps / Refactor Goals:**
+- Decouple the capture logic from the viewport/material generation logic.
+- Rename variables to accurately reflect their purpose (e.g., distinguishing between the main cameras, the color processing viewports, and the depth capture meshes).
+- Extract the post-processing pipeline setup in GDScript into a cleaner, dedicated manager class.
+- Re-evaluate the "Trinity of Threads" implementation to ensure we aren't creating bottlenecks as the project scales.
+
+*This note was left as a save-state before stepping away. I know it's jank. I will fix it.*
