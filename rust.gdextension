@@ -1,0 +1,15 @@
+[configuration]
+
+entry_symbol = "gdext_rust_init"
+compatibility_minimum = 4.1
+
+[libraries]
+
+linux.debug.x86_64 = "res://rust/target/debug/libtexel_splatting.so"
+linux.release.x86_64 = "res://rust/target/release/libtexel_splatting.so"
+windows.debug.x86_64 = "res://rust/target/debug/texel_splatting.dll"
+windows.release.x86_64 = "res://rust/target/release/texel_splatting.dll"
+macos.debug = "res://rust/target/debug/libtexel_splatting.dylib"
+macos.release = "res://rust/target/release/libtexel_splatting.dylib"
+macos.debug.arm64 = "res://rust/target/debug/libtexel_splatting.dylib"
+macos.release.arm64 = "res://rust/target/release/libtexel_splatting.dylib"

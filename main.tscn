@@ -1,0 +1,100 @@
+[gd_scene format=3 uid="uid://50w13pawjwhy"]
+
+[ext_resource type="Script" uid="uid://bvm6jrq67cb08" path="res://Scripts/CubemapBuilder.gd" id="1_ig7tw"]
+[ext_resource type="Script" uid="uid://cpwnb74w1qkkt" path="res://Scripts/RenderManager.gd" id="2_h2yge"]
+[ext_resource type="Script" uid="uid://b4wbouohnwogk" path="res://Scripts/RenderSettings.gd" id="3_1bvp3"]
+[ext_resource type="Script" uid="uid://b6f8po11856xu" path="res://Scripts/FakeWorld.gd" id="4_1bvp3"]
+[ext_resource type="Texture2D" uid="uid://bl6ltbxjprmr3" path="res://palettes/fading-16-1x.png" id="5_5vw27"]
+[ext_resource type="PackedScene" uid="uid://bwggrf7sbmkcv" path="res://addons/PlayerCharacter/player_character_scene.tscn" id="6_7mycd"]
+[ext_resource type="Texture2D" uid="uid://dfip8lppmomm5" path="res://addons/kenney_prototype_textures/dark/texture_01.png" id="7_272bh"]
+[ext_resource type="Script" uid="uid://sg77xkgxf3vq" path="res://Scripts/DebugAxes.gd" id="8_5vw27"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_272bh"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+
+[sub_resource type="Sky" id="Sky_5vw27"]
+sky_material = SubResource("ProceduralSkyMaterial_272bh")
+
+[sub_resource type="Environment" id="Environment_kek77"]
+background_mode = 2
+sky = SubResource("Sky_5vw27")
+ambient_light_color = Color(0.7652138, 0.7652139, 0.7652138, 1)
+tonemap_mode = 2
+ssr_enabled = true
+ssao_enabled = true
+ssil_enabled = true
+sdfgi_enabled = true
+sdfgi_use_occlusion = true
+glow_enabled = true
+
+[sub_resource type="Resource" id="Resource_lquwl"]
+script = ExtResource("3_1bvp3")
+target_fps = 60
+
+[sub_resource type="BoxMesh" id="BoxMesh_lquwl"]
+flip_faces = true
+size = Vector3(100, 100, 100)
+
+[sub_resource type="Cubemap" id="Cubemap_272bh"]
+resource_local_to_scene = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5vw27"]
+albedo_texture = ExtResource("7_272bh")
+uv1_triplanar = true
+
+[node name="Node3D" type="Node3D" unique_id=1049858162]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1835670319]
+transform = Transform3D(-0.8660254, -0.11417545, 0.48678952, 0, 0.97357893, 0.22835086, -0.50000006, 0.19775765, -0.84314406, 0, 0, 0)
+light_color = Color(0.9811247, 0.5378249, 0.36264274, 1)
+light_energy = 5.0
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1027806392]
+environment = SubResource("Environment_kek77")
+
+[node name="MassRenderingNode" type="MassRenderingNode" parent="." unique_id=1427198945]
+
+[node name="RenderSettings" type="Node" parent="." unique_id=951768315]
+script = ExtResource("2_h2yge")
+settings = SubResource("Resource_lquwl")
+
+[node name="FakeWorldCube" type="MeshInstance3D" parent="." unique_id=807323225 node_paths=PackedStringArray("probe")]
+layers = 2
+cast_shadow = 0
+ignore_occlusion_culling = true
+mesh = SubResource("BoxMesh_lquwl")
+script = ExtResource("4_1bvp3")
+probe = NodePath("../AmortizedProbe")
+palette = ExtResource("5_5vw27")
+
+[node name="PlayerCharacter" parent="." unique_id=307017552 instance=ExtResource("6_7mycd")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 0, 0, 0)
+
+[node name="Camera" parent="PlayerCharacter/CameraHolder" parent_id_path=PackedInt32Array(307017552, 1750117354) index="0" unique_id=713894208 groups=["player_cameras"]]
+cull_mask = 2
+
+[node name="HUD" parent="PlayerCharacter" index="5" unique_id=382546849]
+visible = false
+
+[node name="AmortizedProbe" type="RealtimeProbe" parent="." unique_id=1394595646 node_paths=PackedStringArray("follow_node", "fake_world_node", "render_manager") groups=["amortized_probes"]]
+follow_node = NodePath("../PlayerCharacter")
+fake_world_node = NodePath("../FakeWorldCube")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+script = ExtResource("1_ig7tw")
+my_cubemap = SubResource("Cubemap_272bh")
+render_manager = NodePath("../RenderSettings")
+
+[node name="CSGBox3D" type="CSGBox3D" parent="." unique_id=1215254807]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -3, 0)
+use_collision = true
+size = Vector3(100, 1, 100)
+material = SubResource("StandardMaterial3D_5vw27")
+
+[node name="Node3D" type="Node3D" parent="." unique_id=748083859]
+script = ExtResource("8_5vw27")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=421693253]
+
+[editable path="PlayerCharacter"]

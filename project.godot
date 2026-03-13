@@ -1,0 +1,35 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
+[application]
+
+config/name="TexelSplatting"
+config/features=PackedStringArray("4.6", "Forward Plus")
+
+[display]
+
+window/size/mode=3
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/rust_tools/plugin.cfg", "res://addons/terrain_3d/plugin.cfg")
+
+[global_group]
+
+amortized_probes="cubemap probe, amortized"
+player_cameras=""
+
+[rust_tools]
+
+config/build/cargo_package_directories=PackedStringArray(".rust")
