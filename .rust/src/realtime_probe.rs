@@ -1,8 +1,26 @@
 /// Represents a probe node that captures 6-sided environment snapshots (like HDRI probes)
 /// by rendering the scene from cameras positioned in each cardinal direction.
 /// Uses a SubViewport attached to each Camera3D to capture the rendered output.
-use godot::classes::{Camera3D, INode3D, Image, Node3D, SubViewport};
+use godot::classes::{
+    Camera3D, INode3D, Image, MeshInstance3D, Node3D, QuadMesh, Shader, ShaderMaterial, SubViewport,
+};
 use godot::prelude::*;
+
+const DEPTH_SHADER_CODE: &str = r#"
+shader_type spatial;
+render_mode unshaded, fog_disabled;
+
+uniform sampler2D depth_texture : hint_depth_texture;
+
+void vertex() {
+    POSITION = vec4(VERTEX.xy, 1.0, 1.0);
+}
+
+void fragment() {
+    float depth = texture(depth_texture, SCREEN_UV).x;
+    ALBEDO = vec3(depth);
+}
+"#;
 
 /// A Node3D that captures real-time environment probes from 6 directions.
 ///
@@ -20,6 +38,12 @@ pub struct RealtimeProbe {
     #[export]
     cameras: Array<Gd<Camera3D>>,
 
+    /// Optional array of Viewports to capture color from. If provided, the probe will capture
+    /// color from these viewports instead of the ones directly attached to the cameras.
+    /// This allows for multi-viewport post-processing pipelines. Depth is always captured from the camera's viewport.
+    #[export]
+    color_viewports: Array<Gd<SubViewport>>,
+
     /// Optional Node3D to follow for positioning the probe in the scene
     #[export]
     follow_node: Option<Gd<Node3D>>,
@@ -36,6 +60,9 @@ pub struct RealtimeProbe {
 
     /// Stores the 6 captured environment images (one per cardinal direction)
     faces: Vec<Gd<Image>>,
+
+    /// Stores the 6 captured depth images (one per cardinal direction)
+    depth_faces: Vec<Gd<Image>>,
 }
 
 #[godot_api]
@@ -47,11 +74,13 @@ impl INode3D for RealtimeProbe {
         Self {
             base,
             cameras: Array::new(),
+            color_viewports: Array::new(),
             follow_node: None,
             fake_world_node: None,
             time_accumulator: 0.0,
             tick_rate_ms: 16.67,
             faces: Vec::with_capacity(6),
+            depth_faces: Vec::with_capacity(6),
         }
     }
 
@@ -79,13 +108,19 @@ impl RealtimeProbe {
     /// Signal emitted when all 6 environment faces have been captured
     /// The signal carries an array containing Gd<Image> references to each face
     #[signal]
-    fn probe_updated(images: Array<Gd<Image>>);
+    fn probe_updated(images: Array<Gd<Image>>, depth_images: Array<Gd<Image>>);
 
     /// Returns a cloned copy of the captured environment face images
     /// Useful for passing to other systems (e.g., lighting calculation)
     #[func]
     pub fn get_faces_array(&self) -> Array<Gd<Image>> {
         self.faces.iter().cloned().collect()
+    }
+
+    /// Returns a cloned copy of the captured depth face images
+    #[func]
+    pub fn get_depth_faces_array(&self) -> Array<Gd<Image>> {
+        self.depth_faces.iter().cloned().collect()
     }
 
     /// Captures environment snapshots from 6 cardinal directions
@@ -109,8 +144,9 @@ impl RealtimeProbe {
             fw.set_global_position(origin);
         }
 
-        // Temporary vector to store successfully captured images during this capture cycle
+        // Temporary vectors to store successfully captured images during this capture cycle
         let mut current_capture = Vec::with_capacity(6);
+        let mut current_depth_capture = Vec::with_capacity(6);
 
         // Iterate through each camera and capture the environment
         for i in 0..6 {
@@ -120,14 +156,19 @@ impl RealtimeProbe {
             // Position camera at probe's world position
             camera.set_global_position(origin);
 
-            // Extract and force render the SubViewport attached to this camera
-            if let Some(viewport) = camera.get_viewport() {
-                let mut vp = viewport.cast::<SubViewport>();
+            // Determine which viewports to capture from
+            let color_viewport = if self.color_viewports.len() == 6 {
+                Some(self.color_viewports.at(i))
+            } else {
+                camera.get_viewport().map(|v| v.cast::<SubViewport>())
+            };
+            let depth_viewport = camera.get_viewport().map(|v| v.cast::<SubViewport>());
 
-                // Force the viewport to render once (triggers actual scene rendering)
+            // 1. Capture color face
+            if let Some(mut vp) = color_viewport {
                 vp.set_update_mode(godot::classes::sub_viewport::UpdateMode::ONCE);
 
-                // Capture the rendered output as an image
+                // Force a render pass to ensure the color texture is updated
                 if let Some(texture) = vp.get_texture() {
                     if let Some(mut image) = texture.get_image() {
                         if i != 3 {
@@ -140,19 +181,71 @@ impl RealtimeProbe {
                     }
                 }
             }
+
+            // 2. Capture depth face
+            if let Some(mut vp) = depth_viewport {
+                // Ensure we have a depth capture mesh in the viewport
+                let mut depth_mesh = if let Some(node) = vp.get_node_or_null("DepthCapture") {
+                    node.cast::<MeshInstance3D>()
+                } else {
+                    let mut mesh_inst = MeshInstance3D::new_alloc();
+                    mesh_inst.set_name("DepthCapture");
+
+                    let mut quad = Gd::<QuadMesh>::default();
+                    quad.set_size(Vector2::new(2.0, 2.0)); // Cover full screen in NDC
+                    quad.set_flip_faces(true); // Depending on godot versions, might need this or not, usually not needed for full screen quad, but let's test.
+
+                    let mut mat = Gd::<ShaderMaterial>::default();
+                    let mut sh = Gd::<Shader>::default();
+                    sh.set_code(DEPTH_SHADER_CODE);
+                    mat.set_shader(&sh);
+                    quad.set_material(&mat);
+
+                    mesh_inst.set_mesh(&quad);
+
+                    // To ensure it's rendered, we can put it in the viewport's camera
+                    // or just as a child of the viewport since the vertex shader overrides position.
+                    vp.add_child(&mesh_inst);
+                    mesh_inst
+                };
+
+                depth_mesh.set_visible(true);
+                vp.set_update_mode(godot::classes::sub_viewport::UpdateMode::ONCE);
+
+                // We might need a small delay or multiple frames for the toggle to take effect in some Godot versions,
+                // but for a realtime probe, we'll follow the existing pattern of immediate capture.
+                if let Some(texture) = vp.get_texture() {
+                    if let Some(mut image) = texture.get_image() {
+                        if i != 3 {
+                            image.flip_x();
+                        }
+                        if i == 3 {
+                            image.flip_y();
+                        }
+                        current_depth_capture.push(image);
+                    }
+                }
+
+                // Reset to disabled for normal viewing
+                depth_mesh.set_visible(false);
+            }
         }
 
-        // Only emit signal if all 6 faces were captured successfully
-        if current_capture.len() == 6 {
+        // Only emit signal if all 6 faces were captured successfully for both color and depth
+        if current_capture.len() == 6 && current_depth_capture.len() == 6 {
             // Replace old faces with newly captured ones
             self.faces = current_capture;
+            self.depth_faces = current_depth_capture;
 
-            // Create array of Gd<Image> references for the signal
+            // Create arrays of Gd<Image> references for the signal
             let face_array = self.get_faces_array();
+            let depth_face_array = self.get_depth_faces_array();
 
             // Emit signal to notify systems that the probe data is ready
-            self.base_mut()
-                .emit_signal("probe_updated", &[face_array.to_variant()]);
+            self.base_mut().emit_signal(
+                "probe_updated",
+                &[face_array.to_variant(), depth_face_array.to_variant()],
+            );
         }
     }
 }
