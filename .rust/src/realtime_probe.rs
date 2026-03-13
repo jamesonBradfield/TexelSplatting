@@ -25,51 +25,57 @@ void fragment() {
 /// A Node3D that captures real-time environment probes from 6 directions.
 ///
 /// This node:
-/// - Follows a target node (if assigned) to position itself in the scene
-/// - Captures snapshots from 6 cameras facing +X, -X, +Y, -Y, +Z, -Z
-/// - Emits a `probe_updated` signal when all 6 captures are complete
-/// - Stores the captured images as Gd<Image> references
+/// - Follows a target node (if assigned) to position itself in the scene.
+/// - Captures snapshots from 6 cameras facing +X, -X, +Y, -Y, +Z, -Z.
+/// - Captures both color and depth information.
+/// - Emits a `probe_updated` signal when all 6 captures are complete.
 #[derive(GodotClass)]
 #[class(base=Node3D)]
 pub struct RealtimeProbe {
     base: Base<Node3D>,
 
-    /// Array of 6 Camera3D nodes, each with a SubViewport to capture rendered scenes
+    /// Array of exactly 6 Camera3D nodes.
+    /// Each camera must have a SubViewport to capture rendered scenes.
+    /// The order must be strictly: +X (Right), -X (Left), +Y (Top), -Y (Bottom), +Z (Back), -Z (Front).
     #[export]
     cameras: Array<Gd<Camera3D>>,
 
-    /// Optional array of Viewports to capture color from. If provided, the probe will capture
-    /// color from these viewports instead of the ones directly attached to the cameras.
-    /// This allows for multi-viewport post-processing pipelines. Depth is always captured from the camera's viewport.
+    /// Optional array of exactly 6 SubViewports used for color capture.
+    /// If provided, the probe will harvest color data from these viewports instead of the ones directly attached to the cameras.
+    /// This is highly useful for multi-viewport post-processing pipelines (e.g., downscaling, dithering, palette swapping).
+    /// Depth data is always captured directly from the primary camera's viewport to ensure 100% accuracy.
     #[export]
     color_viewports: Array<Gd<SubViewport>>,
 
-    /// Optional Node3D to follow for positioning the probe in the scene
+    /// Optional Node3D for the probe to follow.
+    /// If set, the probe will automatically update its global position to match this target node every frame.
     #[export]
     follow_node: Option<Gd<Node3D>>,
 
-    /// Optional fake world node that tracks the probe's position (used for lighting calculations)
+    /// Optional fake world Node3D.
+    /// If set, this node's global position will also be updated to match the probe's position.
+    /// This is used to maintain the illusion when rendering the cubemap projection in a separate visual layer.
     #[export]
     fake_world_node: Option<Gd<Node3D>>,
 
-    /// Target interval between capture attempts (in milliseconds)
-    #[export]
+    /// The target interval between capture attempts, measured in milliseconds.
+    /// Default is 16.67ms (approximately 60 FPS).
+    /// Increase this value to capture less frequently and save performance.
+    #[export(range = (1.0, 1000.0, 1.0))]
     tick_rate_ms: f64,
-    /// Accumulator for tracking elapsed time since last capture
+
+    /// Internal accumulator for tracking elapsed time since the last successful capture.
     time_accumulator: f64,
 
-    /// Stores the 6 captured environment images (one per cardinal direction)
+    /// Internal storage for the 6 captured environment color images (one per cardinal direction).
     faces: Vec<Gd<Image>>,
 
-    /// Stores the 6 captured depth images (one per cardinal direction)
+    /// Internal storage for the 6 captured depth images (one per cardinal direction).
     depth_faces: Vec<Gd<Image>>,
 }
 
 #[godot_api]
 impl INode3D for RealtimeProbe {
-    /// Initializes the probe node with default values
-    /// - Sets tick rate to ~60 FPS (16.67ms per frame)
-    /// - Pre-allocates vector capacity for 6 face images
     fn init(base: Base<Node3D>) -> Self {
         Self {
             base,
@@ -84,9 +90,6 @@ impl INode3D for RealtimeProbe {
         }
     }
 
-    /// Processes the probe node every frame
-    /// - Updates position if following another node
-    /// - Accumulates time to trigger periodic environment captures
     fn process(&mut self, delta: f64) {
         // Follow target node if assigned, updates probe position to match target
         if let Some(target) = self.follow_node.clone() {
@@ -105,33 +108,35 @@ impl INode3D for RealtimeProbe {
 
 #[godot_api]
 impl RealtimeProbe {
-    /// Signal emitted when all 6 environment faces have been captured
-    /// The signal carries an array containing Gd<Image> references to each face
+    /// Signal emitted when a full cycle of 6 environment faces and 6 depth faces have been successfully captured.
+    /// `images`: An Array of 6 color Image objects (+X, -X, +Y, -Y, +Z, -Z).
+    /// `depth_images`: An Array of 6 depth Image objects (+X, -X, +Y, -Y, +Z, -Z).
     #[signal]
     fn probe_updated(images: Array<Gd<Image>>, depth_images: Array<Gd<Image>>);
 
-    /// Returns a cloned copy of the captured environment face images
-    /// Useful for passing to other systems (e.g., lighting calculation)
+    /// Returns a cloned array of the most recently captured color environment faces.
+    /// Useful for passing to other systems or manually constructing Cubemaps via GDScript.
     #[func]
     pub fn get_faces_array(&self) -> Array<Gd<Image>> {
         self.faces.iter().cloned().collect()
     }
 
-    /// Returns a cloned copy of the captured depth face images
+    /// Returns a cloned array of the most recently captured depth faces.
+    /// Useful for shader parameters or mass rendering logic that requires environmental depth.
     #[func]
     pub fn get_depth_faces_array(&self) -> Array<Gd<Image>> {
         self.depth_faces.iter().cloned().collect()
     }
 
-    /// Captures environment snapshots from 6 cardinal directions
+    /// Core method that executes the capture of environment snapshots from all 6 cardinal directions.
     ///
-    /// Steps:
-    /// 1. Validates that all 6 cameras are assigned (returns early if not)
-    /// 2. Positions all cameras at the probe's global position
-    /// 3. Orients each camera to face one of the 6 cardinal directions (+X, -X, +Y, -Y, +Z, -Z)
-    /// 4. Forces each SubViewport to render once
-    /// 5. Captures the rendered output as an Image
-    /// 6. Emits probe_updated signal if all 6 captures succeed
+    /// This method:
+    /// 1. Validates that exactly 6 cameras are assigned.
+    /// 2. Teleports all cameras to the probe's current global position.
+    /// 3. Injects a full-screen depth-reading mesh into the primary viewports.
+    /// 4. Forces a single-frame render pass on color and depth viewports.
+    /// 5. Harvests the resulting Image data from the GPU.
+    /// 6. Emits `probe_updated` if all 12 images (6 color, 6 depth) are successfully extracted.
     #[func]
     fn capture_environment(&mut self) {
         if self.cameras.len() != 6 {
