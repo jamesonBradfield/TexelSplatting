@@ -61,7 +61,7 @@ pub struct RealtimeProbe {
     /// The target interval between capture attempts, measured in milliseconds.
     /// Default is 16.67ms (approximately 60 FPS).
     /// Increase this value to capture less frequently and save performance.
-    #[export(range = (1.0, 1000.0, 1.0))]
+    #[export(range = (1.0, 1000.0, 0.01))]
     tick_rate_ms: f64,
 
     /// Internal accumulator for tracking elapsed time since the last successful capture.
