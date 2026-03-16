@@ -1,29 +1,28 @@
-# Godot 4+ specific ignores
+# ==============================
+# Godot 4+ Specific
+# ==============================
 .godot/
 *.translation
-*.gdignore
 export_presets.cfg
-*.import
 
-# Rust specific ignores (assuming Rust is in .rust/ as per AGENTS.md)
-.rust/target/
-**/*.rs.bk
+# ==============================
+# Rust / GDExtension
+# ==============================
+target/
 Cargo.lock
+**/*.pdb
+**/*.exp
+**/*.lib
+**/*.dll
+**/*.so
+**/*.dylib
 
-# OS generated files
+# ==============================
+# OS & Temporary Artifacts
+# ==============================
+# This line specifically catches the ~libterrain file Qwen found
+~*
+*.tmp
+*.bak
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
-
-# Editor directories and files
-.idea
-.vscode
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
