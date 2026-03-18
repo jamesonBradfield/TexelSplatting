@@ -105,26 +105,12 @@ impl RealtimeProbe {
 
         let rs = RenderingServer::singleton();
         
-        // Convert Gd<Image> to Image pointers for cubemap creation
-        let mut images: Vec<Gd<Image>> = Vec::with_capacity(6);
-        for face in &self.faces {
-            // Cast Gd<Image> to Image directly
-            if let Some(img) = face.cast::<Image>() {
-                images.push(img);
-            }
+        // Create cubemap and set images
+        let cubemap = rs.cubemap_create();
+        for (i, img) in self.faces.iter().enumerate() {
+            rs.cubemap_set_image(cubemap, i as godot::classes::CubemapFace, img);
         }
-
-        if images.len() == 6 {
-            // Create cubemap and set images
-            let cubemap = rs.cubemap_create();
-            for (i, img) in images.iter().enumerate() {
-                rs.cubemap_set_image(cubemap, i as godot::classes::CubemapFace, img);
-            }
-            cubemap
-        } else {
-            godot_error!("RealtimeProbe: Failed to create cubemap, not all faces were valid images");
-            Rid::new(0)
-        }
+        cubemap
     }
 
     /// Updates the fake_world_node's position to match the probe's current position.
@@ -213,10 +199,9 @@ impl RealtimeProbe {
     /// This method:
     /// 1. Validates that exactly 6 cameras are assigned.
     /// 2. Teleports all cameras to the probe's current global position.
-    /// 3. Injects a full-screen depth-reading mesh into the primary viewports.
-    /// 4. Forces a single-frame render pass on color and depth viewports.
-    /// 5. Harvests the resulting Image data from the GPU.
-    /// 6. Emits `probe_updated` if all 12 images (6 color, 6 depth) are successfully extracted.
+    /// 3. Forces a single-frame render pass on color viewports.
+    /// 4. Harvests the resulting Image data from the GPU.
+    /// 5. Emits `probe_updated` if all 6 color faces are successfully extracted.
     #[func]
     fn capture_environment(&mut self) {
         if self.cameras.len() != 6 {
@@ -231,7 +216,6 @@ impl RealtimeProbe {
 
         // Temporary vectors to store successfully captured images during this capture cycle
         let mut current_capture = Vec::with_capacity(6);
-        let mut current_depth_capture = Vec::with_capacity(6);
 
         // Iterate through each camera and capture the environment
         for i in 0..6 {
@@ -248,6 +232,7 @@ impl RealtimeProbe {
                     // Capture color face
                     if let Some(image) = texture.get_image() {
                         let mut img: Gd<Image> = image.clone();
+                        // Flip images to correct orientation for cubemap
                         if i != 3 {
                             img.call("flip_x", &[]);
                         }
@@ -256,27 +241,14 @@ impl RealtimeProbe {
                         }
                         current_capture.push(img);
                     }
-
-                    // Capture depth face
-                    if let Some(depth_image) = texture.get_image() {
-                        let mut depth_img: Gd<Image> = depth_image.clone();
-                        if i != 3 {
-                            depth_img.call("flip_x", &[]);
-                        }
-                        if i == 3 {
-                            depth_img.call("flip_y", &[]);
-                        }
-                        current_depth_capture.push(depth_img);
-                    }
                 }
             }
         }
 
-        // Only emit signal if all 6 faces were captured successfully for both color and depth
-        if current_capture.len() == 6 && current_depth_capture.len() == 6 {
+        // Only emit signal if all 6 faces were captured successfully
+        if current_capture.len() == 6 {
             // Replace old faces with newly captured ones
             self.faces = current_capture;
-            self.depth_faces = current_depth_capture;
 
             // Create arrays of Gd<Image> references for the signal
             let face_array = self.get_faces_array();
