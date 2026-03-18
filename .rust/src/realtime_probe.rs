@@ -106,9 +106,9 @@ impl RealtimeProbe {
         let rs = RenderingServer::singleton();
         
         // Create cubemap and set images
-        let cubemap = rs.cubemap_create();
+        let cubemap = rs.texture_2d_layered_create(6, ImageFormat::FORMAT_RGBA8, face_resolution);
         for (i, img) in self.faces.iter().enumerate() {
-            rs.cubemap_set_image(cubemap, i as godot::classes::CubemapFace, img);
+            rs.texture_set_data(cubemap, i as u32, img);
         }
         cubemap
     }
@@ -226,11 +226,11 @@ impl RealtimeProbe {
             camera.set_global_position(origin);
 
             // Get the viewport from the camera (returns Gd<Node>, cast to SubViewport)
-            if let Some(vp) = camera.get_viewport().cast::<SubViewport>() {
+            if let Some(vp) = camera.get_viewport().try_cast::<SubViewport>() {
                 // Force a render pass to ensure the texture is updated
-                if let Some(texture) = vp.get_texture() {
+                if let Some(texture) = vp.get_texture() as Option<Gd<ViewportTexture>> {
                     // Capture color face
-                    if let Some(image) = texture.get_image() {
+                    if let Some(image) = texture.get_image() as Option<Gd<Image>> {
                         let mut img: Gd<Image> = image.clone();
                         // Flip images to correct orientation for cubemap
                         if i != 3 {
@@ -257,7 +257,7 @@ impl RealtimeProbe {
             // Emit signal to notify systems that the probe data is ready
             self.base_mut().emit_signal(
                 "probe_updated",
-                &[face_array, depth_face_array],
+                &[face_array.to_variant(), depth_face_array.to_variant()],
             );
         }
     }
