@@ -103,28 +103,26 @@ impl RealtimeProbe {
             return Rid::new(0);
         }
 
-        let mut rs = RenderingServer::singleton();
-        let mut cubemap = rs.cubemap_create();
+        let rs = RenderingServer::singleton();
         
         // Convert Gd<Image> to Image pointers for cubemap creation
-        let mut images = Vec::with_capacity(6);
+        let mut images: Vec<Gd<Image>> = Vec::with_capacity(6);
         for face in &self.faces {
-            if let Some(variant_img) = face.get("image") {
-                if let Some(img) = variant_img.as::<godot::classes::Image>() {
-                    images.push(img);
-                }
+            // Cast Gd<Image> to Image directly
+            if let Some(img) = face.cast::<Image>() {
+                images.push(img);
             }
         }
 
         if images.len() == 6 {
-            let err = rs.cubemap_create_from_images(&mut cubemap, &images);
-            if err == godot::builtin::Error::Ok {
-                cubemap
-            } else {
-                godot_error!("RealtimeProbe: Failed to create cubemap, error code: {}", err);
-                Rid::new(0)
+            // Create cubemap and set images
+            let cubemap = rs.cubemap_create();
+            for (i, img) in images.iter().enumerate() {
+                rs.cubemap_set_image(cubemap, i as godot::classes::CubemapFace, img);
             }
+            cubemap
         } else {
+            godot_error!("RealtimeProbe: Failed to create cubemap, not all faces were valid images");
             Rid::new(0)
         }
     }
@@ -243,30 +241,30 @@ impl RealtimeProbe {
             // Position camera at probe's world position
             camera.set_global_position(origin);
 
-            // Get the viewport from the camera
-            if let Some(vp) = camera.get_viewport().and_then(|v| v.cast::<SubViewport>()) {
+            // Get the viewport from the camera (returns Gd<Node>, cast to SubViewport)
+            if let Some(vp) = camera.get_viewport().cast::<SubViewport>() {
                 // Force a render pass to ensure the texture is updated
                 if let Some(texture) = vp.get_texture() {
                     // Capture color face
                     if let Some(image) = texture.get_image() {
-                        let mut img = image.clone();
+                        let mut img: Gd<Image> = image.clone();
                         if i != 3 {
-                            img.flip_x();
+                            img.call("flip_x", &[]);
                         }
                         if i == 3 {
-                            img.flip_y();
+                            img.call("flip_y", &[]);
                         }
                         current_capture.push(img);
                     }
 
                     // Capture depth face
                     if let Some(depth_image) = texture.get_image() {
-                        let mut depth_img = depth_image.clone();
+                        let mut depth_img: Gd<Image> = depth_image.clone();
                         if i != 3 {
-                            depth_img.flip_x();
+                            depth_img.call("flip_x", &[]);
                         }
                         if i == 3 {
-                            depth_img.flip_y();
+                            depth_img.call("flip_y", &[]);
                         }
                         current_depth_capture.push(depth_img);
                     }
