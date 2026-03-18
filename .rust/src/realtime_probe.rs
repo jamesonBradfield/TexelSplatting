@@ -33,6 +33,11 @@ pub struct RealtimeProbe {
     #[export]
     fake_world_node: Option<Gd<Node3D>>,
 
+    /// Optional world_3d reference for viewports to render into.
+    /// If not set, viewports will use the scene's default world.
+    #[export]
+    world_3d: Option<Gd<Node3D>>,
+
     /// The target interval between capture attempts, measured in milliseconds.
     /// Default is 16.67ms (approximately 60 FPS).
     /// Increase this value to capture less frequently and save performance.
@@ -57,6 +62,7 @@ impl INode3D for RealtimeProbe {
             cameras: Array::new(),
             follow_node: None,
             fake_world_node: None,
+            world_3d: None,
             time_accumulator: 0.0,
             tick_rate_ms: 16.67,
             faces: Vec::with_capacity(6),
@@ -100,6 +106,57 @@ impl RealtimeProbe {
     #[func]
     pub fn get_depth_faces_array(&self) -> Array<Gd<Image>> {
         self.depth_faces.iter().cloned().collect()
+    }
+
+    /// Spawn cameras and viewports for cubemap capture.
+    /// Call this from GDScript after class initialization.
+    /// `face_resolution`: Resolution for each face (default 256)
+    /// `real_world_mask`: Cull mask for real world layer (default 1)
+    #[func]
+    fn _spawn_cameras(&mut self) {
+        // Standard Godot 4 coordinate rotations for cubemap faces
+        let face_rotations = [
+            Vector3::new(0.0, -90.0, 0.0), // 0: +X (Right)
+            Vector3::new(0.0, 90.0, 0.0),  // 1: -X (Left)
+            Vector3::new(90.0, 0.0, 0.0),  // 2: +Y (Top)
+            Vector3::new(-90.0, 0.0, 0.0), // 3: -Y (Bottom)
+            Vector3::new(0.0, 180.0, 0.0), // 4: +Z (Back)
+            Vector3::new(0.0, 0.0, 0.0),   // 5: -Z (Front)
+        ];
+
+        let face_resolution = 512; // Use an integer for Vector2i
+        let world = self.base().get_world_3d();
+
+        for i in 0..6 {
+            // 1. Properly allocate the SubViewport
+            let mut vp_gd = SubViewport::new_alloc();
+            vp_gd.set_name(&format!("FaceViewport_{}", i));
+            vp_gd.set_size(Vector2i::new(face_resolution, face_resolution));
+            vp_gd.set_update_mode(godot::classes::sub_viewport::UpdateMode::ONCE);
+
+            // Attach to the current 3D world if it exists
+            if let Some(w) = &world {
+                vp_gd.set_world_3d(w);
+            }
+
+            // 2. Properly allocate the Camera3D
+            let mut cam_gd = Camera3D::new_alloc();
+            cam_gd.set_name(&format!("FaceCamera_{}", i));
+            cam_gd.set_fov(90.0);
+            cam_gd.set_rotation_degrees(face_rotations[i]);
+
+            // If you have a real_world_mask variable, set it here:
+            // cam_gd.set_cull_mask(real_world_mask);
+
+            // 3. Build the node tree hierarchy
+            // Note: add_child takes impl AsArg<Gd<Node>>, so we pass references
+            vp_gd.add_child(&cam_gd);
+            self.base_mut().add_child(&vp_gd);
+
+            // 4. Store the camera in our Godot Array
+            // Must pass by reference (&) to satisfy the AsArg trait bounds!
+            self.cameras.push(&cam_gd);
+        }
     }
 
     /// Core method that executes the capture of environment snapshots from all 6 cardinal directions.
