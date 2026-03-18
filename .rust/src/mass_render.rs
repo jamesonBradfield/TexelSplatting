@@ -116,12 +116,9 @@ impl MassRenderingNode {
             ]);
         }
 
-        // Convert to PackedFloat32Array
-        let buffer = PackedFloat32Array::from(floats.as_slice());
-
         // Set the entire buffer at once
         let mut rs = RenderingServer::singleton();
-        rs.multimesh_set_buffer(self.multimesh, &buffer);
+        rs.multimesh_set_buffer(self.multimesh, &floats);
     }
 }
 

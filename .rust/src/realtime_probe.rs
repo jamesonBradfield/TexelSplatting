@@ -189,8 +189,8 @@ impl RealtimeProbe {
             self.base_mut().add_child(&vp_gd);
 
             // 4. Store the camera in our Godot Array
-            // Must pass by reference (&) to satisfy the AsArg trait bounds!
-            self.cameras.push(&cam_gd);
+            // Clone the camera to ensure ownership
+            self.cameras.push(cam_gd.clone());
         }
     }
 
@@ -257,7 +257,7 @@ impl RealtimeProbe {
             // Emit signal to notify systems that the probe data is ready
             self.base_mut().emit_signal(
                 "probe_updated",
-                &[face_array.to_variant(), depth_face_array.to_variant()],
+                &[face_array, depth_face_array],
             );
         }
     }
