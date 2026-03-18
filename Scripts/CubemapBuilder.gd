@@ -11,9 +11,7 @@ class_name CubemapBuilder
 
 
 func _ready():
-	my_cubemap = Cubemap.new()
-
-	# Spawn our viewports and cameras before connecting the signal
+	# Spawn our viewports and cameras
 	_spawn_cameras()
 
 	# Connect the Rust signal to our local function
@@ -21,8 +19,6 @@ func _ready():
 
 
 func _spawn_cameras():
-	# Ensure the Rust array is empty before we populate it
-	cameras.clear()
 
 	# Define rotations for the 6 cubemap faces: +X, -X, +Y, -Y, +Z, -Z
 	var face_rotations = [
@@ -40,9 +36,6 @@ func _spawn_cameras():
 		vp.name = "FaceViewport_" + str(i)
 		vp.size = Vector2i(default_face_resolution, default_face_resolution)
 		vp.render_target_update_mode = SubViewport.UPDATE_ONCE
-
-		# ADD THIS LINE: Tell the viewport to look at the main 3D world!
-		vp.world_3d = get_world_3d()
 
 		# 2. Create the Camera3D
 		var cam = Camera3D.new()

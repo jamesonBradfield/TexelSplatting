@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "rust-docs": {
+      "command": "npx",
+      "args": ["-y", "@iflow-mcp/rust-docs-mcp-server"]
+    },
+    "rust-cargo-tools": {
+      "command": "rust-mcp-server",
+      "args": []
+    }
+  }
+}

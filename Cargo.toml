@@ -1,0 +1,11 @@
+[package]
+name = "texel_splatting"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = ".rust/src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+godot = { version = "0.3.1", features = ["register-docs"] }

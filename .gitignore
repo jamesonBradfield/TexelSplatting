@@ -2,7 +2,9 @@
 # Godot 4+ Specific
 # ==============================
 .godot/
+*.import
 *.translation
+*.uid
 export_presets.cfg
 
 # ==============================
@@ -26,3 +28,4 @@ Cargo.lock
 *.bak
 .DS_Store
 Thumbs.db
+.aider*
