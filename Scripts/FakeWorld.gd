@@ -48,7 +48,8 @@ func _process(_delta):
 	if probe != null:
 		# The probe freezes its position while capturing.
 		# The FakeWorld MUST freeze with it to maintain the holodeck illusion.
-		global_position = probe.global_position
+		# Use the Rust method to update position
+		probe.update_fake_world_position()
 
 
 func _on_probe_cycle_complete(faces: Array[Image]):

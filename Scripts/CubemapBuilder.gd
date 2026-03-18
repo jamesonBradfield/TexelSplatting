@@ -68,8 +68,10 @@ func _spawn_cameras():
 func _on_probe_updated(faces: Array[Image]):
 	# Grab the 6 raw images from Rust
 	if faces.size() == 6 and faces[0] != null:
-		# Create a texture from the 6 faces!
-		my_cubemap.create_from_images(faces)
-
-		# Now pass my_cubemap to your splatting shader,
-		# or send it back into your MassRenderingNode!
+		# Create a cubemap from the captured faces using Rust
+		var cubemap_rid = probe.create_cubemap_from_faces()
+		if cubemap_rid != null:
+			# Set the cubemap as a shader parameter or use it directly
+			my_cubemap = cubemap_rid.get_cubemap()
+			# Now pass my_cubemap to your splatting shader,
+			# or send it back into your MassRenderingNode!

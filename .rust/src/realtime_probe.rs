@@ -94,6 +94,55 @@ impl RealtimeProbe {
     #[signal]
     fn probe_updated(images: Array<Gd<Image>>, depth_images: Array<Gd<Image>>);
 
+    /// Creates a Cubemap from the currently captured environment faces.
+    /// Returns the Cubemap RID if successful, or null on error.
+    #[func]
+    pub fn create_cubemap_from_faces(&self) -> Option<Rid> {
+        if self.faces.len() != 6 {
+            godot_error!("RealtimeProbe: Cannot create cubemap, need exactly 6 faces");
+            return None;
+        }
+
+        let mut rs = RenderingServer::singleton();
+        let mut cubemap = rs.cubemap_create();
+        
+        // Convert Gd<Image> to Image pointers for cubemap creation
+        let mut images = Vec::with_capacity(6);
+        for face in &self.faces {
+            if let Some(img) = face.get_image() {
+                images.push(img);
+            }
+        }
+
+        if images.len() == 6 {
+            let err = rs.cubemap_create_from_images(&mut cubemap, &images);
+            if err == OK {
+                Some(cubemap)
+            } else {
+                godot_error!("RealtimeProbe: Failed to create cubemap, error code: {}", err);
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Updates the fake_world_node's position to match the probe's current position.
+    /// This maintains the holodeck illusion when rendering the cubemap projection.
+    #[func]
+    pub fn update_fake_world_position(&self) {
+        if let Some(fw) = self.fake_world_node.clone() {
+            let pos = self.base().get_global_position();
+            fw.set_global_position(pos);
+        }
+    }
+
+    /// Returns the probe's current global position.
+    #[func]
+    pub fn get_probe_position(&self) -> godot::classes::Vector3 {
+        self.base().get_global_position()
+    }
+
     /// Returns a cloned array of the most recently captured color environment faces.
     /// Useful for passing to other systems or manually constructing Cubemaps via GDScript.
     #[func]
