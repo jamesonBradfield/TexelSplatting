@@ -1,7 +1,7 @@
 /// Represents a probe node that captures 6-sided environment snapshots (like HDRI probes)
 /// by rendering the scene from cameras positioned in each cardinal direction.
 /// Uses a SubViewport attached to each Camera3D to capture the rendered output.
-use godot::classes::{Camera3D, INode3D, Image, Node3D, SubViewport};
+use godot::classes::{Camera3D, INode3D, Image, Node3D, RenderingServer, SubViewport};
 use godot::prelude::*;
 
 /// A Node3D that captures real-time environment probes from 6 directions.
@@ -95,12 +95,12 @@ impl RealtimeProbe {
     fn probe_updated(images: Array<Gd<Image>>, depth_images: Array<Gd<Image>>);
 
     /// Creates a Cubemap from the currently captured environment faces.
-    /// Returns the Cubemap RID if successful, or null on error.
+    /// Returns the Cubemap RID if successful, or 0 on error.
     #[func]
-    pub fn create_cubemap_from_faces(&self) -> Option<Rid> {
+    pub fn create_cubemap_from_faces(&self) -> Rid {
         if self.faces.len() != 6 {
             godot_error!("RealtimeProbe: Cannot create cubemap, need exactly 6 faces");
-            return None;
+            return Rid::new();
         }
 
         let mut rs = RenderingServer::singleton();
@@ -109,21 +109,21 @@ impl RealtimeProbe {
         // Convert Gd<Image> to Image pointers for cubemap creation
         let mut images = Vec::with_capacity(6);
         for face in &self.faces {
-            if let Some(img) = face.get_image() {
+            if let Some(img) = face.get() {
                 images.push(img);
             }
         }
 
         if images.len() == 6 {
             let err = rs.cubemap_create_from_images(&mut cubemap, &images);
-            if err == OK {
-                Some(cubemap)
+            if err == godot::builtin::Error::OK {
+                cubemap
             } else {
                 godot_error!("RealtimeProbe: Failed to create cubemap, error code: {}", err);
-                None
+                Rid::new()
             }
         } else {
-            None
+            Rid::new()
         }
     }
 
@@ -131,7 +131,7 @@ impl RealtimeProbe {
     /// This maintains the holodeck illusion when rendering the cubemap projection.
     #[func]
     pub fn update_fake_world_position(&self) {
-        if let Some(fw) = self.fake_world_node.clone() {
+        if let Some(mut fw) = self.fake_world_node.clone() {
             let pos = self.base().get_global_position();
             fw.set_global_position(pos);
         }
@@ -139,7 +139,7 @@ impl RealtimeProbe {
 
     /// Returns the probe's current global position.
     #[func]
-    pub fn get_probe_position(&self) -> godot::classes::Vector3 {
+    pub fn get_probe_position(&self) -> godot::builtin::Vector3 {
         self.base().get_global_position()
     }
 
