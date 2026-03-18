@@ -100,7 +100,7 @@ impl RealtimeProbe {
     pub fn create_cubemap_from_faces(&self) -> Rid {
         if self.faces.len() != 6 {
             godot_error!("RealtimeProbe: Cannot create cubemap, need exactly 6 faces");
-            return Rid::new();
+            return Rid::new(0);
         }
 
         let mut rs = RenderingServer::singleton();
@@ -109,21 +109,23 @@ impl RealtimeProbe {
         // Convert Gd<Image> to Image pointers for cubemap creation
         let mut images = Vec::with_capacity(6);
         for face in &self.faces {
-            if let Some(img) = face.get() {
-                images.push(img);
+            if let Some(img) = face.get("image") {
+                if let Some(variant_img) = img.as::<godot::classes::Image>() {
+                    images.push(variant_img);
+                }
             }
         }
 
         if images.len() == 6 {
             let err = rs.cubemap_create_from_images(&mut cubemap, &images);
-            if err == godot::builtin::Error::OK {
+            if err == godot::builtin::Error::Ok {
                 cubemap
             } else {
                 godot_error!("RealtimeProbe: Failed to create cubemap, error code: {}", err);
-                Rid::new()
+                Rid::new(0)
             }
         } else {
-            Rid::new()
+            Rid::new(0)
         }
     }
 
