@@ -109,9 +109,9 @@ impl RealtimeProbe {
         // Convert Gd<Image> to Image pointers for cubemap creation
         let mut images = Vec::with_capacity(6);
         for face in &self.faces {
-            if let Some(img) = face.get("image") {
-                if let Some(variant_img) = img.as::<godot::classes::Image>() {
-                    images.push(variant_img);
+            if let Some(variant_img) = face.get("image") {
+                if let Some(img) = variant_img.as::<godot::classes::Image>() {
+                    images.push(img);
                 }
             }
         }
@@ -238,37 +238,37 @@ impl RealtimeProbe {
         // Iterate through each camera and capture the environment
         for i in 0..6 {
             // Get the camera for this direction (expects exactly 6 cameras)
-            let mut camera = self.cameras.at(i);
+            let camera = self.cameras.at(i);
 
             // Position camera at probe's world position
             camera.set_global_position(origin);
 
             // Get the viewport from the camera
-            if let Some(mut vp) = camera.get_viewport().map(|v| v.cast::<SubViewport>()) {
-                vp.set_update_mode(godot::classes::sub_viewport::UpdateMode::ONCE);
-
+            if let Some(vp) = camera.get_viewport().and_then(|v| v.cast::<SubViewport>()) {
                 // Force a render pass to ensure the texture is updated
                 if let Some(texture) = vp.get_texture() {
                     // Capture color face
-                    if let Some(mut image) = texture.get_image() {
+                    if let Some(image) = texture.get_image() {
+                        let mut img = image.clone();
                         if i != 3 {
-                            image.flip_x();
+                            img.flip_x();
                         }
                         if i == 3 {
-                            image.flip_y();
+                            img.flip_y();
                         }
-                        current_capture.push(image);
+                        current_capture.push(img);
                     }
 
                     // Capture depth face
-                    if let Some(mut depth_image) = texture.get_image() {
+                    if let Some(depth_image) = texture.get_image() {
+                        let mut depth_img = depth_image.clone();
                         if i != 3 {
-                            depth_image.flip_x();
+                            depth_img.flip_x();
                         }
                         if i == 3 {
-                            depth_image.flip_y();
+                            depth_img.flip_y();
                         }
-                        current_depth_capture.push(depth_image);
+                        current_depth_capture.push(depth_img);
                     }
                 }
             }
