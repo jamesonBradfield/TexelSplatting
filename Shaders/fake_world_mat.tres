@@ -6,3 +6,4 @@
 resource_local_to_scene = true
 render_priority = 0
 shader = ExtResource("1_1o187")
+shader_parameter/dither_strength = 0.02
