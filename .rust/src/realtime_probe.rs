@@ -1,7 +1,9 @@
 /// Represents a probe node that captures 6-sided environment snapshots (like HDRI probes)
 /// by rendering the scene from cameras positioned in each cardinal direction.
 /// Uses a SubViewport attached to each Camera3D to capture the rendered output.
-use godot::classes::{Camera3D, INode3D, Image, Node3D, RenderingServer, SubViewport};
+use godot::classes::{Camera3D, INode3D, Image, Node3D, RenderingServer, SubViewport, ImageFormat, ViewportTexture};
+
+const face_resolution: i32 = 512;
 use godot::prelude::*;
 
 /// A Node3D that captures real-time environment probes from 6 directions.
@@ -106,7 +108,7 @@ impl RealtimeProbe {
         let rs = RenderingServer::singleton();
         
         // Create cubemap and set images
-        let cubemap = rs.texture_2d_layered_create(6, ImageFormat::FORMAT_RGBA8, face_resolution);
+        let cubemap = rs.texture_2d_layered_create(&Array::new(), ImageFormat::FORMAT_RGBA8);
         for (i, img) in self.faces.iter().enumerate() {
             rs.texture_set_data(cubemap, i as u32, img);
         }
