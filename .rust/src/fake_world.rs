@@ -146,9 +146,12 @@ impl FakeWorld {
         let err = self.cubemap.create_from_images(&typed_faces);
         if err == Error::OK {
             godot_print!("FakeWorld: Cubemap created successfully, setting env_cubemap parameter");
+            // Pass the RID of the cubemap, not the resource itself
+            // The shader expects a samplerCube which is passed via RID
+            let cubemap_rid = self.cubemap.get_rid();
             self.material
-                .set_shader_parameter("env_cubemap", &self.cubemap.to_variant());
-            godot_print!("FakeWorld: env_cubemap shader parameter set");
+                .set_shader_parameter("env_cubemap", &cubemap_rid.to_variant());
+            godot_print!("FakeWorld: env_cubemap shader parameter set (RID: {:?})", cubemap_rid);
         } else {
             godot_error!("FakeWorld: Failed to create cubemap, error code: {:?}", err);
         }
