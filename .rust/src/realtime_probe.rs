@@ -185,6 +185,7 @@ impl RealtimeProbe {
             let depth_variant = self.get_depth_faces_array().to_variant();
 
             // 2. Now that the variables are safe, we can mutably borrow the base.
+            godot_print!("RealtimeProbe: Emitting probe_updated signal");
             self.base_mut()
                 .emit_signal("probe_updated", &[face_variant, depth_variant]);
         }

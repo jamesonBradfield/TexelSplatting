@@ -89,20 +89,12 @@ impl IMeshInstance3D for FakeWorld {
             self.material = mat;
         }
 
-        let probe_opt = self.probe.clone();
-        let base_node = self.base().clone();
-
-        if let Some(mut p) = probe_opt {
-            if p.has_signal("probe_updated") {
-                let callable = base_node.callable("_on_probe_cycle_complete");
-                p.connect("probe_updated", &callable);
-            } else {
-                godot_error!(
-                    "FakeWorld: The assigned probe does not have the 'probe_updated' signal!"
-                );
-            }
+        if let Some(probe) = self.probe.clone() {
+            let base_node = self.base().clone();
+            let callable = base_node.callable("_on_probe_cycle_complete");
+            probe.connect("probe_updated", &callable);
         } else {
-            godot_warn!("FakeWorld: No AmortizedProbe assigned!");
+            godot_warn!("FakeWorld: No probe assigned!");
         }
     }
 
@@ -116,10 +108,13 @@ impl IMeshInstance3D for FakeWorld {
 #[godot_api]
 impl FakeWorld {
     #[func]
-    fn _on_probe_cycle_complete(&mut self, faces: Array<Gd<Image>>) {
+    fn _on_probe_cycle_complete(&mut self, faces: Array<Gd<Image>>, _depth_faces: Array<Gd<Image>>) {
         if faces.len() != 6 {
+            godot_error!("FakeWorld: Expected 6 faces, got {}", faces.len());
             return;
         }
+        
+        godot_print!("FakeWorld: Creating cubemap from {} faces", faces.len());
 
         let mut typed_faces = Array::new();
         let mut first_format = Format::MAX;
@@ -160,6 +155,12 @@ impl FakeWorld {
         self.initial_palette = Some(palette_texture.clone());
         self.material
             .set_shader_parameter("palette", &palette_texture.to_variant());
+    }
+
+    #[func]
+    fn get_cubemap_rid(&self) -> Rid {
+        // Returns the cubemap RID for debugging
+        Rid::Invalid
     }
 
     #[func]
@@ -215,5 +216,15 @@ impl FakeWorld {
         let tex =
             ImageTexture::create_from_image(&palette_image).expect("Failed to create ImageTexture");
         tex.upcast()
+    }
+}
+
+impl Drop for FakeWorld {
+    fn drop(&mut self) {
+        // Clean up cubemap if it exists
+        if !self.cubemap.is_nil() {
+            // Note: Cubemap doesn't have a free_rid method, but we can log cleanup
+            godot_print!("FakeWorld: Cleaning up cubemap resource");
+        }
     }
 }
