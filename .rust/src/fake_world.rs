@@ -70,7 +70,7 @@ impl IMeshInstance3D for FakeWorld {
 
         if self.base().get_material_override().is_none() {
             let shader = load::<Shader>("res://Shaders/fake_world.gdshader");
-            if shader.is_null() {
+            if shader.get_rid().is_invalid() {
                 godot_error!("FakeWorld: Failed to load shader");
                 return;
             }
@@ -97,7 +97,8 @@ impl IMeshInstance3D for FakeWorld {
 
         if let Some(mut probe) = self.probe.clone() {
             // Create a callable that captures self and calls the method
-            let callable = Callable::from_object_method(self, "_on_probe_cycle_complete");
+            // Clone self to get a Gd<FakeWorld>, then pass &self (which is &Gd<FakeWorld>)
+            let callable = Callable::from_object_method(&self.clone(), "_on_probe_cycle_complete");
             probe.connect("probe_updated", &callable);
         } else {
             godot_warn!("FakeWorld: No probe assigned!");
@@ -133,7 +134,7 @@ impl FakeWorld {
 
         for i in 0..6 {
             let img = faces.at(i);
-            if img.is_null() {
+            if img.get_rid().is_invalid() {
                 godot_warn!("FakeWorld: Face image {} is null", i);
                 return;
             }
