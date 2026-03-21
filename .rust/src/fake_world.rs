@@ -68,37 +68,21 @@ impl IMeshInstance3D for FakeWorld {
             }
         }
 
-        if self.base().get_material_override().is_none() {
-            let shader = load::<Shader>("res://Shaders/fake_world.gdshader");
-            if shader.get_rid().is_invalid() {
-                godot_error!("FakeWorld: Failed to load shader");
-                return;
-            }
+        if let Some(shader) = godot::classes::ResourceLoader::singleton().load("res://Shaders/fake_world.gdshader").map(|res| res.cast::<Shader>()) {
             let mut mat = self.material.clone();
             mat.set_shader(&shader);
 
             if let Some(pal) = &self.initial_palette {
                 mat.set_shader_parameter("palette", &pal.to_variant());
             }
-            self.base_mut()
-                .set_material_override(&mat.upcast::<Material>());
+            
+            self.base_mut().set_material_override(&mat.upcast::<Material>());
         } else {
-            let mut mat = self
-                .base()
-                .get_material_override()
-                .unwrap()
-                .cast::<ShaderMaterial>();
-            if let Some(pal) = &self.initial_palette {
-                mat.set_shader_parameter("palette", &pal.to_variant());
-            }
-            self.base_mut()
-                .set_material_override(&mat.upcast::<Material>());
+            godot_error!("FakeWorld: Failed to load shader from res://Shaders/fake_world.gdshader");
         }
 
         if let Some(mut probe) = self.probe.clone() {
-            // Create a callable that captures self and calls the method
-            // Clone self to get a Gd<FakeWorld>, then pass &self (which is &Gd<FakeWorld>)
-            let callable = Callable::from_object_method(&self.clone(), "_on_probe_cycle_complete");
+            let callable = self.base().callable("_on_probe_cycle_complete");
             probe.connect("probe_updated", &callable);
         } else {
             godot_warn!("FakeWorld: No probe assigned!");
@@ -133,9 +117,9 @@ impl FakeWorld {
         let mut first_height = 0;
 
         for i in 0..6 {
-            let img = faces.at(i);
-            if img.get_rid().is_invalid() {
-                godot_warn!("FakeWorld: Face image {} is null", i);
+            let mut img = faces.at(i); // Must be mut for convert/resize
+            if !img.is_instance_valid() {
+                godot_warn!("FakeWorld: Face image {} is invalid", i);
                 return;
             }
 
