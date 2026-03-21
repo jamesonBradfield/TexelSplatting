@@ -84,8 +84,11 @@ impl IMeshInstance3D for FakeWorld {
         if let Some(mut probe) = self.probe.clone() {
             // Create a callable that will call _on_probe_cycle_complete on this FakeWorld instance
             // We need to use the base node's callable since self is &mut FakeWorld, not &Gd<FakeWorld>
+            // The callable will be bound to the node that owns this FakeWorld instance
             let callable = self.base().callable("_on_probe_cycle_complete");
             probe.connect("probe_updated", &callable);
+            
+            godot_print!("FakeWorld: Connected probe signal to _on_probe_cycle_complete");
         } else {
             godot_warn!("FakeWorld: No probe assigned!");
         }
@@ -106,6 +109,8 @@ impl FakeWorld {
         faces: Array<Gd<Image>>,
         _depth_faces: Array<Gd<Image>>,
     ) {
+        godot_print!("FakeWorld: Received probe_updated signal with {} faces", faces.len());
+        
         if faces.len() != 6 {
             godot_error!("FakeWorld: Expected 6 faces, got {}", faces.len());
             return;
@@ -140,8 +145,10 @@ impl FakeWorld {
 
         let err = self.cubemap.create_from_images(&typed_faces);
         if err == Error::OK {
+            godot_print!("FakeWorld: Cubemap created successfully, setting env_cubemap parameter");
             self.material
                 .set_shader_parameter("env_cubemap", &self.cubemap.to_variant());
+            godot_print!("FakeWorld: env_cubemap shader parameter set");
         } else {
             godot_error!("FakeWorld: Failed to create cubemap, error code: {:?}", err);
         }
