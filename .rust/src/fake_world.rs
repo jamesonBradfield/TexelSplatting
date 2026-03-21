@@ -83,7 +83,8 @@ impl IMeshInstance3D for FakeWorld {
 
         if let Some(mut probe) = self.probe.clone() {
             // Create a callable that will call _on_probe_cycle_complete on this FakeWorld instance
-            let callable = Callable::from_object_method(self, "_on_probe_cycle_complete");
+            // We need to use the base node's callable since self is &mut FakeWorld, not &Gd<FakeWorld>
+            let callable = self.base().callable("_on_probe_cycle_complete");
             probe.connect("probe_updated", &callable);
         } else {
             godot_warn!("FakeWorld: No probe assigned!");
