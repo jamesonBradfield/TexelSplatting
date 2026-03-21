@@ -9,6 +9,7 @@ use godot::classes::{
     Material, // <-- Add Material here
     MeshInstance3D,
     Node3D,
+    RenderingServer,
     Shader,
     ShaderMaterial,
     Texture2D,
