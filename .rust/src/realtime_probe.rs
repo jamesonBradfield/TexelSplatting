@@ -238,3 +238,85 @@ impl RealtimeProbe {
         godot_print!("RealtimeProbe: Capture complete, cubemap RID: {:?}", self.cubemap_rid);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_realtime_probe_initialization() {
+        let base = Base::new_alloc::<Node3D>();
+        let probe = RealtimeProbe::init(base);
+        
+        assert!(probe.cameras.is_empty());
+        assert!(probe.faces.is_empty());
+        assert!(probe.depth_faces.is_empty());
+        assert!(probe.cubemap_rid.is_invalid());
+        assert!(probe.is_ready() == false);
+    }
+
+    #[test]
+    fn test_realtime_probe_camera_capacity() {
+        let base = Base::new_alloc::<Node3D>();
+        let mut probe = RealtimeProbe::init(base);
+        
+        // Verify initial capacity
+        assert!(probe.faces.capacity() == 6);
+        assert!(probe.depth_faces.capacity() == 6);
+    }
+
+    #[test]
+    fn test_realtime_probe_cubemap_rid_invalid_initially() {
+        let base = Base::new_alloc::<Node3D>();
+        let probe = RealtimeProbe::init(base);
+        
+        let rid = probe.get_cubemap_rid();
+        assert!(rid.is_invalid());
+    }
+
+    #[test]
+    fn test_realtime_probe_update_fake_world_position() {
+        let base = Base::new_alloc::<Node3D>();
+        let mut probe = RealtimeProbe::init(base);
+        
+        // Set fake_world_node with a position
+        let mut fake_world = Node3D::new_gd();
+        fake_world.set_global_position(Vector3::new(10.0, 20.0, 30.0));
+        probe.fake_world_node = Some(fake_world);
+        
+        // Call the update function
+        probe.update_fake_world_position();
+        
+        // Verify the probe position is tracked (we can't easily verify without Node3D reference)
+        // but we can verify the function doesn't panic
+        assert!(probe.fake_world_node.is_some());
+    }
+
+    #[test]
+    fn test_realtime_probe_get_faces_array() {
+        let base = Base::new_alloc::<Node3D>();
+        let mut probe = RealtimeProbe::init(base);
+        
+        // Add some dummy images
+        let img1 = Image::create(16, 16, false, Format::RGBA8).expect("Failed to create image");
+        let img2 = Image::create(16, 16, false, Format::RGBA8).expect("Failed to create image");
+        
+        let mut img1_gd = Gd::from(img1.upcast());
+        let mut img2_gd = Gd::from(img2.upcast());
+        
+        probe.faces.push(img1_gd);
+        probe.faces.push(img2_gd);
+        
+        let array = probe.get_faces_array();
+        assert_eq!(array.len(), 2);
+    }
+
+    #[test]
+    fn test_realtime_probe_get_depth_faces_array() {
+        let base = Base::new_alloc::<Node3D>();
+        let probe = RealtimeProbe::init(base);
+        
+        let array = probe.get_depth_faces_array();
+        assert_eq!(array.len(), 0);
+    }
+}
