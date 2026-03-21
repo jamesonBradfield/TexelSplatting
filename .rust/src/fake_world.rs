@@ -108,12 +108,16 @@ impl IMeshInstance3D for FakeWorld {
 #[godot_api]
 impl FakeWorld {
     #[func]
-    fn _on_probe_cycle_complete(&mut self, faces: Array<Gd<Image>>, _depth_faces: Array<Gd<Image>>) {
+    fn _on_probe_cycle_complete(
+        &mut self,
+        faces: Array<Gd<Image>>,
+        _depth_faces: Array<Gd<Image>>,
+    ) {
         if faces.len() != 6 {
             godot_error!("FakeWorld: Expected 6 faces, got {}", faces.len());
             return;
         }
-        
+
         godot_print!("FakeWorld: Creating cubemap from {} faces", faces.len());
 
         let mut typed_faces = Array::new();
