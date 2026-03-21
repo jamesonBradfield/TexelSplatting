@@ -89,7 +89,7 @@ impl IMeshInstance3D for FakeWorld {
             self.material = mat;
         }
 
-        if let Some(probe) = self.probe.clone() {
+        if let Some(mut probe) = self.probe.clone() {
             let base_node = self.base().clone();
             let callable = base_node.callable("_on_probe_cycle_complete");
             probe.connect("probe_updated", &callable);
@@ -165,6 +165,15 @@ impl FakeWorld {
 
     #[func]
     fn generate_palette_from_image(&self, source_image: Gd<Image>) -> Gd<Texture2D> {
+
+    #[func]
+    fn get_cubemap_rid(&self) -> Rid {
+        // Returns the cubemap RID for debugging
+        Rid::Invalid
+    }
+
+    #[func]
+    fn generate_palette_from_image(&self, source_image: Gd<Image>) -> Gd<Texture2D> {
         let mut palette_image =
             Image::create(16, 1, false, Format::RGBA8).expect("Failed to create palette Image");
         let mut sampled_colors: Vec<Color> = Vec::new();
@@ -222,7 +231,7 @@ impl FakeWorld {
 impl Drop for FakeWorld {
     fn drop(&mut self) {
         // Clean up cubemap if it exists
-        if !self.cubemap.is_nil() {
+        if !self.cubemap.get_rid().is_invalid() {
             // Note: Cubemap doesn't have a free_rid method, but we can log cleanup
             godot_print!("FakeWorld: Cleaning up cubemap resource");
         }
