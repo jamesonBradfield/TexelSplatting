@@ -70,11 +70,15 @@ impl IMeshInstance3D for FakeWorld {
 
         if self.base().get_material_override().is_none() {
             let shader = load::<Shader>("res://Shaders/fake_world.gdshader");
+            if shader.is_error() {
+                godot_error!("FakeWorld: Failed to load shader: {:?}", shader.get_error());
+                return;
+            }
             let mut mat = self.material.clone();
             mat.set_shader(&shader);
 
             if let Some(pal) = &self.initial_palette {
-                mat.set_shader_parameter("palette", &pal.to_variant());
+                mat.set_shader_parameter("palette", &pal);
             }
             self.base_mut()
                 .set_material_override(&mat.upcast::<Material>());
@@ -85,14 +89,14 @@ impl IMeshInstance3D for FakeWorld {
                 .unwrap()
                 .cast::<ShaderMaterial>();
             if let Some(pal) = &self.initial_palette {
-                mat.set_shader_parameter("palette", &pal.to_variant());
+                mat.set_shader_parameter("palette", &pal);
             }
-            self.material = mat;
+            self.base_mut()
+                .set_material_override(&mat.upcast::<Material>());
         }
 
         if let Some(mut probe) = self.probe.clone() {
-            let base_node = self.base().clone();
-            let callable = base_node.callable("_on_probe_cycle_complete");
+            let callable = self.callable("_on_probe_cycle_complete");
             probe.connect("probe_updated", &callable);
         } else {
             godot_warn!("FakeWorld: No probe assigned!");
@@ -230,10 +234,8 @@ impl Drop for FakeWorld {
         let rid = self.cubemap.get_rid();
         if !rid.is_invalid() {
             let mut rs = RenderingServer::singleton();
-            // Try to free the cubemap RID
-            // Note: Cubemap resource should be freed automatically when dropped,
-            // but we log for debugging purposes
-            godot_print!("FakeWorld: Cleaning up cubemap RID: {:?}", rid);
+            rs.free_rid(rid);
+            godot_print!("FakeWorld: Cleaned up cubemap RID: {:?}", rid);
         }
     }
 }

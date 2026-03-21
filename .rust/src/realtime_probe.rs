@@ -85,6 +85,10 @@ impl RealtimeProbe {
 
     #[func]
     pub fn spawn_cameras(&mut self) {
+        if self.cameras.len() == 6 {
+            godot_warn!("RealtimeProbe: Already have 6 cameras!");
+            return;
+        }
         self._spawn_cameras();
     }
 
@@ -231,5 +235,6 @@ impl RealtimeProbe {
         }
 
         self.capture_environment();
+        godot_print!("RealtimeProbe: Capture complete, cubemap RID: {:?}", self.cubemap_rid);
     }
 }
