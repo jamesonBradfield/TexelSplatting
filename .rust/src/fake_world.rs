@@ -70,15 +70,15 @@ impl IMeshInstance3D for FakeWorld {
 
         if self.base().get_material_override().is_none() {
             let shader = load::<Shader>("res://Shaders/fake_world.gdshader");
-            if shader.is_error() {
-                godot_error!("FakeWorld: Failed to load shader: {:?}", shader.get_error());
+            if shader.is_null_or_invalid() {
+                godot_error!("FakeWorld: Failed to load shader");
                 return;
             }
             let mut mat = self.material.clone();
             mat.set_shader(&shader);
 
             if let Some(pal) = &self.initial_palette {
-                mat.set_shader_parameter("palette", &pal);
+                mat.set_shader_parameter("palette", &pal.to_variant());
             }
             self.base_mut()
                 .set_material_override(&mat.upcast::<Material>());
@@ -89,14 +89,15 @@ impl IMeshInstance3D for FakeWorld {
                 .unwrap()
                 .cast::<ShaderMaterial>();
             if let Some(pal) = &self.initial_palette {
-                mat.set_shader_parameter("palette", &pal);
+                mat.set_shader_parameter("palette", &pal.to_variant());
             }
             self.base_mut()
                 .set_material_override(&mat.upcast::<Material>());
         }
 
         if let Some(mut probe) = self.probe.clone() {
-            let callable = self.callable("_on_probe_cycle_complete");
+            // Create a callable that captures self and calls the method
+            let callable = Callable::method(self, "_on_probe_cycle_complete");
             probe.connect("probe_updated", &callable);
         } else {
             godot_warn!("FakeWorld: No probe assigned!");
@@ -131,9 +132,9 @@ impl FakeWorld {
         let mut first_height = 0;
 
         for i in 0..6 {
-            let mut img = faces.at(i);
-            if img.is_empty() {
-                godot_warn!("FakeWorld: Face image {} is empty", i);
+            let img = faces.at(i);
+            if img.is_null_or_invalid() {
+                godot_warn!("FakeWorld: Face image {} is null or invalid", i);
                 return;
             }
 
