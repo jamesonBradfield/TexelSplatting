@@ -212,7 +212,7 @@ impl RealtimeProbe {
     /// This maintains the holodeck illusion when rendering the cubemap projection.
     #[func]
     pub fn update_fake_world_position(&self) {
-        if let Some(fw) = self.fake_world_node.clone() {
+        if let Some(mut fw) = self.fake_world_node.clone() {
             let pos = self.base().get_global_position();
             fw.set_global_position(pos);
         }
