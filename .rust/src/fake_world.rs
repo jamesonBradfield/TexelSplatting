@@ -162,13 +162,13 @@ impl FakeWorld {
     }
 
     #[func]
-    fn get_cubemap_rid(&self) -> Rid {
+    pub fn get_cubemap_rid(&self) -> Rid {
         // Returns the cubemap RID for debugging
-        Rid::Invalid
+        self.cubemap.get_rid()
     }
 
     #[func]
-    fn generate_palette_from_image(&self, source_image: Gd<Image>) -> Gd<Texture2D> {
+    pub fn generate_palette_from_image(&self, source_image: Gd<Image>) -> Gd<Texture2D> {
         let mut palette_image =
             Image::create(16, 1, false, Format::RGBA8).expect("Failed to create palette Image");
         let mut sampled_colors: Vec<Color> = Vec::new();
@@ -219,16 +219,20 @@ impl FakeWorld {
 
         let tex =
             ImageTexture::create_from_image(&palette_image).expect("Failed to create ImageTexture");
-        tex.upcast()
+        Gd::from(tex.upcast())
     }
 }
 
 impl Drop for FakeWorld {
     fn drop(&mut self) {
-        // Clean up cubemap if it exists
-        if !self.cubemap.get_rid().is_invalid() {
-            // Note: Cubemap doesn't have a free_rid method, but we can log cleanup
-            godot_print!("FakeWorld: Cleaning up cubemap resource");
+        // Clean up cubemap RID if it exists
+        let rid = self.cubemap.get_rid();
+        if !rid.is_invalid() {
+            let mut rs = RenderingServer::singleton();
+            // Try to free the cubemap RID
+            // Note: Cubemap resource should be freed automatically when dropped,
+            // but we log for debugging purposes
+            godot_print!("FakeWorld: Cleaning up cubemap RID: {:?}", rid);
         }
     }
 }

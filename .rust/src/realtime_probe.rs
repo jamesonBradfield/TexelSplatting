@@ -84,14 +84,19 @@ impl RealtimeProbe {
     }
 
     #[func]
+    pub fn spawn_cameras(&mut self) {
+        self._spawn_cameras();
+    }
+
+    #[func]
     fn _spawn_cameras(&mut self) {
         let face_rotations = [
-            Vector3::new(0.0, -90.0, 0.0), // +X
-            Vector3::new(0.0, 90.0, 0.0),  // -X
-            Vector3::new(90.0, 0.0, 0.0),  // +Y
-            Vector3::new(-90.0, 0.0, 0.0), // -Y
-            Vector3::new(0.0, 180.0, 0.0), // +Z
-            Vector3::new(0.0, 0.0, 0.0),   // -Z
+            Vector3::new(0.0, -90.0, 0.0), // +X (Right)
+            Vector3::new(0.0, 90.0, 0.0),  // -X (Left)
+            Vector3::new(90.0, 0.0, 0.0),  // +Y (Top)
+            Vector3::new(-90.0, 0.0, 0.0), // -Y (Bottom)
+            Vector3::new(0.0, 180.0, 0.0), // +Z (Back)
+            Vector3::new(0.0, 0.0, 0.0),   // -Z (Front)
         ];
 
         let world = self.base().get_world_3d();
@@ -111,9 +116,12 @@ impl RealtimeProbe {
             cam_gd.set_fov(90.0);
             cam_gd.set_rotation_degrees(rotation);
 
+            // Add camera to subviewport
             vp_gd.add_child(&cam_gd);
+            // Add subviewport to the probe node
             self.base_mut().add_child(&vp_gd);
 
+            // Clone camera for later use in capture
             self.cameras.push(&cam_gd.clone());
         }
     }
@@ -204,9 +212,24 @@ impl RealtimeProbe {
     /// This maintains the holodeck illusion when rendering the cubemap projection.
     #[func]
     pub fn update_fake_world_position(&self) {
-        if let Some(mut fw) = self.fake_world_node.clone() {
+        if let Some(fw) = self.fake_world_node.clone() {
             let pos = self.base().get_global_position();
             fw.set_global_position(pos);
         }
+    }
+
+    #[func]
+    pub fn is_ready(&self) -> bool {
+        self.cameras.len() == 6
+    }
+
+    #[func]
+    pub fn capture_environment_once(&mut self) {
+        if self.cameras.len() != 6 {
+            godot_warn!("RealtimeProbe: Need 6 cameras before capturing");
+            return;
+        }
+
+        self.capture_environment();
     }
 }
