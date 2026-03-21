@@ -165,15 +165,6 @@ impl FakeWorld {
 
     #[func]
     fn generate_palette_from_image(&self, source_image: Gd<Image>) -> Gd<Texture2D> {
-
-    #[func]
-    fn get_cubemap_rid(&self) -> Rid {
-        // Returns the cubemap RID for debugging
-        Rid::Invalid
-    }
-
-    #[func]
-    fn generate_palette_from_image(&self, source_image: Gd<Image>) -> Gd<Texture2D> {
         let mut palette_image =
             Image::create(16, 1, false, Format::RGBA8).expect("Failed to create palette Image");
         let mut sampled_colors: Vec<Color> = Vec::new();
