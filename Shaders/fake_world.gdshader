@@ -2,7 +2,7 @@ shader_type spatial;
 render_mode unshaded; 
 
 uniform samplerCube env_cubemap : filter_nearest, source_color;
-uniform sampler2D palette : filter_nearest, source_color;
+uniform sampler2D palette : filter_nearest, source_color, hint_default_black;
 uniform float dither_strength : hint_range(0.0, 0.5) = 0.02; // Tweak this in the inspector!
 
 varying vec3 local_pos;

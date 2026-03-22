@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://b4wbouohnwogk" path="res://Scripts/RenderSettings.gd" id="3_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://bwggrf7sbmkcv" path="res://addons/PlayerCharacter/player_character_scene.tscn" id="6_7mycd"]
 [ext_resource type="Texture2D" uid="uid://bw3pfwi7ij06l" path="res://palettes/aap-64-1x.png" id="6_272bh"]
+[ext_resource type="Shader" uid="uid://bubaihkfj866r" path="res://Shaders/fake_world.gdshader" id="7_5vw27"]
 [ext_resource type="Texture2D" uid="uid://dfip8lppmomm5" path="res://addons/kenney_prototype_textures/dark/texture_01.png" id="7_272bh"]
 [ext_resource type="Script" uid="uid://sg77xkgxf3vq" path="res://Scripts/DebugAxes.gd" id="8_5vw27"]
 
@@ -33,6 +34,11 @@ target_fps = 60
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5vw27"]
 albedo_texture = ExtResource("7_272bh")
 uv1_triplanar = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_kek77"]
+render_priority = 0
+shader = ExtResource("7_5vw27")
+shader_parameter/dither_strength = 0.02
 
 [sub_resource type="BoxMesh" id="BoxMesh_lquwl"]
 flip_faces = true
@@ -84,6 +90,7 @@ script = ExtResource("8_5vw27")
 probe = NodePath("../AmortizedProbe")
 initial_palette = ExtResource("6_272bh")
 layers = 2
+material_override = SubResource("ShaderMaterial_kek77")
 mesh = SubResource("BoxMesh_lquwl")
 
 [editable path="PlayerCharacter"]

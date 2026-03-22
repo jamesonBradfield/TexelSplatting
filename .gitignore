@@ -29,3 +29,5 @@ Cargo.lock
 .DS_Store
 Thumbs.db
 .aider*
+# Debugging / Macro Expansion
+expanded_debug.rs

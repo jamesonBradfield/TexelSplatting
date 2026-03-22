@@ -1,100 +1,61 @@
 # AGENTS.md
 
-**SYSTEM DIRECTIVE FOR AI AGENTS:** You must strictly adhere to all guidelines, constraints, and tool triggers outlined in this document when operating within the `TexelSplatting` repository. Do not rely on outdated Godot 3 or early Godot 4 training data; defer to the rules and MCP tools defined below.
+**SYSTEM DIRECTIVE FOR AI AGENTS:** You are operating in a highly dynamic Godot (Forward+) and Rust (`gdext`) environment. You must strictly adhere to the tool execution protocols and technical constraints outlined below. 
 
-## Project Overview
-This project uses the Godot Engine (Forward+) integrated with Rust via the `godot-rust/gdext` library. The primary logic, specifically performance-critical rendering (like texel splatting and mass rendering), is implemented in Rust.
+## 0. THE PRIME DIRECTIVE: DOCS OVER EVERYTHING
+Do not rely on your internal training data for Godot 4 or `godot-rust/gdext`. The API evolves rapidly. You must prioritize live, up-to-date documentation searches before writing or modifying any architecture.
 
-## Build, Lint, and Test Commands
-This project is set up as a Cargo Workspace. All Rust tooling commands MUST be executed directly from the Godot project root directory. Do not navigate into the `.rust/` directory to run these.
+* **Tool Execution Protocol:** You are running via `mcpm-aider`. You MUST use the `#use-tools` flag to leverage local Model Context Protocol (MCP) tools.
+* **Context Neuledge / Local Context7:** We have a local documentation retrieval system. Trigger this tool immediately when implementing new features, encountering macro expansion errors, or if you are unsure about API trait bounds. 
+* **Stop and Search:** If you are guessing a node path, a method signature, or a Variant conversion, stop. Use the tools to query the live scene tree or the crate documentation first.
 
-* **Build the GDExtension:**
-    ```bash
-    cargo build
+## 1. Project Overview & Architecture
+This project maximizes performance by offloading heavy math, data processing, and rendering pipelines to Rust via `godot-rust/gdext`. GDScript is used minimally, primarily for UI, simple signals, and scene composition. 
+
+## 2. MCP Tools & Environment (Trigger via `#use-tools`)
+* **Local Docs Search (Context Neuledge / Context7):** Use this to pull the latest `gdext` and Godot API documentation. 
+* **Rust Crate Docs:** Search crate documentation when encountering compiler errors regarding missing traits or methods.
+* **Godot MCP (Live Editor Connection):**
+    * **Scene Tree:** Query the live scene tree to find exact `NodePath`s. **Never hallucinate or guess node names.**
+    * **Debugging:** Read Godot debug console logs in real-time if a script fails silently or crashes the editor.
+
+## 3. Build, Lint, and Test Commands
+This project is a Cargo Workspace. Execute all Rust tooling commands directly from the **Godot project root directory**.
+
+* **Unified Test Runner:**
+    ```batch
+    run_tests.bat # Or ./run_tests.sh on Linux/macOS
     ```
-    *This compiles the Rust code via the workspace and generates the dynamic library in the root `target/` folder.*
+    * **Function:** Sequentially builds the Rust library (updating `.dll`/`.so`) and executes Godot-side tests (e.g., GdUnit4) in `--headless` mode. 
+* **Standard Cargo Commands:**
+    * Build: `cargo build`
+    * Format: `cargo fmt`
+    * Lint: `cargo clippy -- -D warnings`
+    * Unit Tests (Pure Rust only): `cargo test -p <crate_name>`
 
-* **Formatting:**
-    ```bash
-    cargo fmt
-    ```
+## 4. Macro Debugging & Transparency
+Because `gdext` relies heavily on macros (`#[godot_api]`, `#[derive(GodotClass)]`), compiler errors can be cryptic.
 
-* **Linting:**
-    ```bash
-    cargo clippy -- -D warnings
-    ```
+* **Command:** `cargo expand -p <crate_name> --lib <module_name> > expanded_debug.rs`
+* **Action:** If the compiler reports an error "inside a macro expansion", generate this file, read it to identify type mismatches, and **delete the file** when finished.
 
-* **Running Tests:**
-    ```bash
-    cargo test
-    ```
+## 5. Memory Management & Performance (CRITICAL)
+* **Manual RID Management:** When interacting directly with Godot's servers (e.g., `RenderingServer`, `PhysicsServer3D`), you are given `Rid`s. These are raw, unmanaged pointers. **You must explicitly free them** in the Rust `Drop` trait implementation to prevent memory leaks.
+* **Batching:** Never loop over individual instances in a high-frequency tick. Build flat buffers (e.g., `PackedFloat32Array`) and set them all at once.
+* **Thread Safety:** Godot objects (`Gd<T>`) are generally **not** `Send` or `Sync`. Do not pass them between threads. Pass plain Rust data and use `Arc<Mutex<T>>` to safely share state with the presentation thread.
 
-* **Running a Single Test:**
-    ```bash
-    cargo test -p texel_splatting --test <test_name>
-    ```
+## 6. GDScript & Rust Interoperability
+* **Inheritance over Composition:** If a GDScript file extends a Rust class, the GDScript file **IS** that Rust class. Use `self` to call exposed Rust methods. 
+* **No Shadowing:** Do not define a function in GDScript with the same name as a Rust function exposed via `#[func]`.
+* **Single Source of Truth:** Avoid duplicating logic across languages.
 
----
+## 7. `gdext` Trait Bounds and Borrowing Rules
+* **Passing by Reference:** Most Godot API methods require passing objects by reference (e.g., `&img`).
+* **Variant Conversions:** Convert to Variant and pass by reference: `mat.set_shader_parameter("name", &val.to_variant());`.
+* **StringName Arguments:** The `AsArg` trait handles standard Rust string slices automatically (e.g., `get_node("Player")`). Do not manually convert.
+* **Explicit Upcasting:** Use `.upcast::<TargetType>()` when calling methods on parent classes (e.g., `mat.upcast::<Material>()`).
 
-## Code Style Guidelines & Architecture
-
-### 1. Language & Frameworks
-* **Rust (gdext):** The core logic language. Ensure familiarity with modern `godot-rust` conventions.
-* **Godot 4:** The engine environment.
-
-### 2. Imports and Annotations
-* Always include standard Godot preludes: `use godot::prelude::*;`
-* Import specific classes as needed: `use godot::classes::{Node3D, RenderingServer, ...};`
-* Use `#[derive(GodotClass)]` and `#[class(base=ClassName)]` to define Godot classes.
-* Use `#[godot_api]` on implementation blocks to expose methods to Godot.
-* Expose variables/functions using `#[var]` and `#[func]`.
-
-### 3. Naming Conventions
-* **Structs/Classes:** `PascalCase` (e.g., `MassRenderingNode`, `TexelSplatting`).
-* **Functions/Variables/Properties:** `snake_case` (e.g., `setup_multimesh`, `visible_count`).
-* **Constants:** `SCREAMING_SNAKE_CASE`.
-
-### 4. Memory Management & Safety (Critical)
-* **RIDs (Resource IDs):** When interacting directly with Godot's servers (e.g., `RenderingServer`), you will often use `Rid`s. These are raw pointers. **You must explicitly free them** in the `Drop` trait implementation to prevent memory leaks that will crash the editor/game.
-* **Thread Safety:** Godot objects (`Gd<T>`) are generally not `Send` or `Sync`. When offloading work to background threads, pass plain data. Use `Arc<Mutex<T>>` to safely share state between Rust background threads and the Godot presentation thread.
-
-### 5. Performance & Architecture Rules ("The Iron Rule")
-* **Server-Side Rendering:** For mass object rendering, bypass the standard scene tree nodes. Interact directly with the `RenderingServer` (e.g., using `multimesh_set_buffer`).
-* **Batching:** When updating transforms for a `MultiMesh`, prefer building a flat buffer (`PackedFloat32Array`) in row-major order and setting it all at once via `multimesh_set_buffer`.
-* **Delta-Grip:** Never tie calculations to raw frames. Always use the `delta` time passed in `_process` to ensure consistent simulation speed.
-* **Background Threads:** Do not put heavy operations in Godot's `_process` loop. Spawn Rust background threads to calculate "Truth", and use the main thread purely for "Presentation".
-
-### 6. Logging & Error Handling
-* Use `godot_print!()`, `godot_warn!()`, and `godot_error!()` for Godot-facing logging instead of `println!()`.
-* Avoid using `godot_print!` inside high-frequency loops.
-* Handle `Option` and `Result` properly. Avoid unwrapping `None` or `Err` if it could crash the engine; use `godot_error!` and return early.
-
-### 7. GDScript & Rust Interoperability (CRITICAL RULES)
-* **RULE 1: INHERITANCE OVER COMPOSITION:** If a GDScript file extends a Rust class, the GDScript file **IS** that Rust class. DO NOT hallucinate instance variables (like `probe.my_method()`). DO call the exposed Rust methods directly via `self`.
-* **RULE 2: NO NATIVE METHOD SHADOWING:** You CANNOT define a function in GDScript if a Rust function with the EXACT SAME NAME is exposed via `#[func]` in the parent class. Give them distinct names.
-* **RULE 3: SINGLE SOURCE OF TRUTH:** Do not write the exact same setup logic in both languages. Pick one language for the logic and call it from the other.
-
-### 8. `gdext` Trait Bounds and Borrowing Rules (CRITICAL RUST RULES)
-The Godot 4 `gdext` API relies heavily on references and the `AsArg` trait. You must follow these rules to prevent compiler errors:
-* **Passing by Reference:** Godot API methods like `set_shader`, `set_material_override`, `connect`, and array insertions (`Array::push`) require passing objects by reference.
-    * **BAD:** `typed_faces.push(img)`
-    * **GOOD:** `typed_faces.push(&img)`
-* **Variant Conversions:** When a method expects a Variant, explicitly convert it and pass by reference.
-    * **BAD:** `mat.set_shader_parameter("palette", pal.to_variant());`
-    * **GOOD:** `mat.set_shader_parameter("palette", &pal.to_variant());`
-* **StringName Arguments:** Do NOT use `.into()` or `StringName::from()` inside Godot methods like `get_node()`, `call()`, or `has_signal()`. The `AsArg` trait automatically converts standard Rust string slices.
-    * **BAD:** `probe.call(StringName::from("update"), &[]);`
-    * **GOOD:** `probe.call("update", &[]);`
-* **Explicit Upcasting:** When calling `.upcast()` on classes with deep inheritance, explicitly declare the target type to avoid inference failures.
-    * **BAD:** `self.set_material_override(&mat.upcast());`
-    * **GOOD:** `self.set_material_override(&mat.upcast::<Material>());`
-
-### 9. Model Context Protocol (MCP) Tools
-You are connected to external MCP servers to verify facts, read live documentation, and interact with the engine. **Do not hallucinate APIs or guess scene tree structures.** Use your tools proactively:
-* **Context7 (`context7`):** Pulls the absolute latest documentation from the web.
-    * **Trigger:** If asked to implement a new `gdext` feature, or if you encounter a Godot 4 API you are not 100% confident about, you MUST query Context7 before writing code.
-* **Rust Crate Docs (`rust-docs`):** Allows you to search and read local/remote crate documentation.
-    * **Trigger:** If the Rust compiler throws an error regarding a missing method or trait implementation, use this tool to inspect the crate's actual API surface.
-* **Live Godot Engine (`godot`):** Connects you directly to the running Godot editor.
-    * **Trigger (Scene Tree):** If a script requires a `NodePath` or needs to interact with specific nodes, use this tool to query the live scene tree. **Never guess node names.**
-    * **Trigger (Debugging):** If the user reports a runtime error, use this tool to read the Godot debug console or inspect the properties of the failing node in real-time.
+## 8. Safety & Godot-Rust Safeguards
+This project uses the `safeguards-dev-balanced` feature flag in `Cargo.toml`.
+* **Behavior:** The engine will panic with a descriptive message if Rust's borrowing rules are violated at runtime.
+* **Agent Action:** If a test fails with a "Safeguard Violation," analyze the lifecycle of the pointer. Do not simply `clone()` to bypass it; ensure you aren't holding a mutable borrow across yield points.

@@ -40,8 +40,8 @@ impl IMeshInstance3D for FakeWorld {
             probe: None,
             initial_palette: None,
             player_camera: None,
-            cubemap: Cubemap::new_gd(),
-            material: ShaderMaterial::new_gd(),
+            cubemap: Cubemap::new_alloc(),
+            material: ShaderMaterial::new_alloc(),
             base,
         }
     }
@@ -68,15 +68,19 @@ impl IMeshInstance3D for FakeWorld {
             }
         }
 
-        if let Some(shader) = godot::classes::ResourceLoader::singleton().load("res://Shaders/fake_world.gdshader").map(|res| res.cast::<Shader>()) {
+        if let Some(shader) = godot::classes::ResourceLoader::singleton()
+            .load("res://Shaders/fake_world.gdshader")
+            .map(|res| res.cast::<Shader>())
+        {
             let mut mat = self.material.clone();
             mat.set_shader(&shader);
 
             if let Some(pal) = &self.initial_palette {
                 mat.set_shader_parameter("palette", &pal.to_variant());
             }
-            
-            self.base_mut().set_material_override(&mat.upcast::<Material>());
+
+            self.base_mut()
+                .set_material_override(&mat.upcast::<Material>());
         } else {
             godot_error!("FakeWorld: Failed to load shader from res://Shaders/fake_world.gdshader");
         }
@@ -87,7 +91,7 @@ impl IMeshInstance3D for FakeWorld {
             // The callable will be bound to the node that owns this FakeWorld instance
             let callable = self.base().callable("_on_probe_cycle_complete");
             probe.connect("probe_updated", &callable);
-            
+
             godot_print!("FakeWorld: Connected probe signal to _on_probe_cycle_complete");
         } else {
             godot_warn!("FakeWorld: No probe assigned!");
@@ -109,8 +113,11 @@ impl FakeWorld {
         faces: Array<Gd<Image>>,
         _depth_faces: Array<Gd<Image>>,
     ) {
-        godot_print!("FakeWorld: Received probe_updated signal with {} faces", faces.len());
-        
+        godot_print!(
+            "FakeWorld: Received probe_updated signal with {} faces",
+            faces.len()
+        );
+
         if faces.len() != 6 {
             godot_error!("FakeWorld: Expected 6 faces, got {}", faces.len());
             return;
@@ -151,7 +158,10 @@ impl FakeWorld {
             let cubemap_rid = self.cubemap.get_rid();
             self.material
                 .set_shader_parameter("env_cubemap", &cubemap_rid.to_variant());
-            godot_print!("FakeWorld: env_cubemap shader parameter set (RID: {:?})", cubemap_rid);
+            godot_print!(
+                "FakeWorld: env_cubemap shader parameter set (RID: {:?})",
+                cubemap_rid
+            );
         } else {
             godot_error!("FakeWorld: Failed to create cubemap, error code: {:?}", err);
         }
@@ -244,16 +254,16 @@ mod tests {
 
     #[test]
     fn test_fake_world_generate_palette_from_image() {
-        let fake_world = FakeWorld::new_gd();
-        
+        let fake_world = FakeWorld::new_alloc();
+
         let mut source_image =
             Image::create(16, 16, false, Format::RGBA8).expect("Failed to create source image");
         source_image.fill(Color::from_rgba(0.5, 0.5, 0.5, 1.0));
-        
+
         let mut source_gd = Gd::from(source_image.upcast());
-        
+
         let palette = fake_world.generate_palette_from_image(source_gd);
-        
+
         // Verify we got a texture back
         assert!(!palette.get_rid().is_invalid());
     }
