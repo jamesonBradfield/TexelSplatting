@@ -152,14 +152,18 @@ impl FakeWorld {
         }
 
         // Create the cubemap from images
-        let err = ImageTextureLayered::create_from_images(&typed_faces);
+        let mut cubemap = ImageTextureLayered::new();
+        let err = cubemap.create_from_images(&typed_faces);
+        if err != Error::OK {
+            godot_error!("FakeWorld: Failed to create cubemap, error code: {:?}", err);
+        }
         if err == Error::OK {
             godot_print!("FakeWorld: Cubemap created successfully, setting env_cubemap parameter");
             // Pass the RID of the cubemap, not the resource itself
             // The shader expects a samplerCube which is passed via RID
             let cubemap_rid = err;
             if let Some(mut mat) = self.material.as_ref().cloned() {
-                mat.set_shader_parameter("env_cubemap", &cubemap_rid.to_variant());
+                mat.set_shader_parameter("env_cubemap", &cubemap.get_rid().to_variant());
                 self.material = Some(mat);
             }
             godot_print!(
@@ -167,7 +171,7 @@ impl FakeWorld {
                 cubemap_rid
             );
         } else {
-            godot_error!("FakeWorld: Failed to create cubemap, error code: {:?}", err);
+            // Already handled above
         }
     }
 
