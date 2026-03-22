@@ -200,9 +200,9 @@ impl RealtimeProbe {
                 self.cubemap_rid
             );
             self.signals().probe_updated().emit(
-                &self.get_faces_array(),
-                &self.get_depth_faces_array(),
-                &self.cubemap_rid,
+                self.get_faces_array(),
+                self.get_depth_faces_array(),
+                self.cubemap_rid,
             );
         }
 
