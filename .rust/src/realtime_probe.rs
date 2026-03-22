@@ -194,15 +194,20 @@ impl RealtimeProbe {
                 }
             }
 
+            // Clone values before emit to avoid borrow checker issues
+            let faces_array = self.get_faces_array();
+            let depth_faces_array = self.get_depth_faces_array();
+            let cubemap_rid = self.cubemap_rid;
+
             // Use typed signal API for type safety
             godot_print!(
                 "RealtimeProbe: Emitting probe_updated signal with cubemap_rid: {:?}",
-                self.cubemap_rid
+                cubemap_rid
             );
             self.signals().probe_updated().emit(
-                &self.get_faces_array(),
-                &self.get_depth_faces_array(),
-                self.cubemap_rid,
+                &faces_array,
+                &depth_faces_array,
+                cubemap_rid,
             );
         }
 
