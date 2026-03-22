@@ -98,7 +98,7 @@ impl IMeshInstance3D for FakeWorld {
             // I wonder what the lifecycle of godot-rust signals is, there's gotta be docs on
             // this...
             let callable = self.base().callable("_on_probe_cycle_complete");
-            probe.connect("probe_updated".into(), &callable);
+            probe.connect("probe_updated", &callable);
 
             godot_print!("FakeWorld: Connected probe signal to _on_probe_cycle_complete");
         } else {
