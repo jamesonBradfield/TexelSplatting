@@ -242,7 +242,7 @@ impl FakeWorld {
 
         let tex =
             ImageTexture::create_from_image(&palette_image).expect("Failed to create ImageTexture");
-        Gd::from(tex.upcast())
+        tex.upcast()
     }
 }
 
