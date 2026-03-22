@@ -23,6 +23,9 @@ pub struct RealtimeProbe {
     #[export]
     world_3d: Option<Gd<Node3D>>,
 
+    #[export]
+    material: Option<Gd<ShaderMaterial>>,
+
     #[export(range = (1.0, 1000.0, 0.01))]
     tick_rate_ms: f64,
 
@@ -43,6 +46,7 @@ impl INode3D for RealtimeProbe {
             follow_node: None,
             fake_world_node: None,
             world_3d: None,
+            material: None,
             time_accumulator: 0.0,
             tick_rate_ms: 16.67,
             faces: Vec::with_capacity(6),
@@ -205,6 +209,12 @@ impl RealtimeProbe {
         // Update the fake world position after capture
         if let Some(mut fw) = self.fake_world_node.clone() {
             fw.call("update_fake_world_position", &[]);
+        }
+
+        // Set the cubemap as a shader parameter on the material
+        if let Some(mut mat) = self.material.clone() {
+            mat.set_shader_parameter("env_cubemap", &self.cubemap_rid.to_variant());
+            self.material = Some(mat);
         }
     }
 
