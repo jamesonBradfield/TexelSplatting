@@ -40,8 +40,8 @@ impl IMeshInstance3D for FakeWorld {
             probe: None,
             initial_palette: None,
             player_camera: None,
-            cubemap: Cubemap::new_alloc(),
-            material: ShaderMaterial::new_alloc(),
+            cubemap: Gd::<Cubemap>::new_alloc(),
+            material: Gd::<ShaderMaterial>::new_alloc(),
             base,
         }
     }
