@@ -86,7 +86,7 @@ impl IMeshInstance3D for FakeWorld {
             godot_error!("FakeWorld: Failed to load shader from res://Shaders/fake_world.gdshader");
         }
 
-        if let Some(mut probe) = self.probe.as_ref().and_then(|p| p.clone()) {
+        if let Some(mut probe) = self.probe.as_ref().and_then(|p| Some(p.clone())) {
             // Create a callable that will call _on_probe_cycle_complete on this FakeWorld instance
             // We need to use the base node's callable since self is &mut FakeWorld, not &Gd<FakeWorld>
             // The callable will be bound to the node that owns this FakeWorld instance
@@ -152,7 +152,10 @@ impl FakeWorld {
         }
 
         // Create the cubemap from images
-        let mut cubemap = Gd::new_alloc(ImageTextureLayered::new()).expect("Failed to create ImageTextureLayered");
+        // Create the cubemap from images
+        let mut cubemap = Gd::<ImageTextureLayered>::from_init_fn(|base| {
+            ImageTextureLayered::from_init_fn(base).expect("Failed to create ImageTextureLayered")
+        }).expect("Failed to create ImageTextureLayered");
         let err = cubemap.create_from_images(&typed_faces);
         if err != Error::OK {
             godot_error!("FakeWorld: Failed to create cubemap, error code: {:?}", err);
