@@ -3,7 +3,6 @@ use godot::classes::{
     image::Format,
     Camera3D,
     Cubemap,
-    ImageTextureLayered,
     IMeshInstance3D,
     Image,
     ImageTexture,
@@ -15,7 +14,6 @@ use godot::classes::{
     ShaderMaterial,
     Texture2D,
 };
-use godot::global::Error;
 use godot::prelude::*;
 
 #[derive(GodotClass)]
