@@ -27,8 +27,8 @@ pub struct FakeWorld {
     initial_palette: Option<Gd<Texture2D>>,
 
     player_camera: Option<Gd<Camera3D>>,
-    cubemap: Gd<Cubemap>,
-    material: Gd<ShaderMaterial>,
+    cubemap: Option<Gd<Cubemap>>,
+    material: Option<Gd<ShaderMaterial>>,
 
     base: Base<MeshInstance3D>,
 }
@@ -40,8 +40,8 @@ impl IMeshInstance3D for FakeWorld {
             probe: None,
             initial_palette: None,
             player_camera: None,
-            cubemap: Gd::<Cubemap>::new_gd(),
-            material: Gd::<ShaderMaterial>::new_gd(),
+            cubemap: None,
+            material: None,
             base,
         }
     }
@@ -72,7 +72,7 @@ impl IMeshInstance3D for FakeWorld {
             .load("res://Shaders/fake_world.gdshader")
             .map(|res| res.cast::<Shader>())
         {
-            let mut mat = self.material.clone();
+            let mut mat = self.material.as_ref().unwrap().clone();
             mat.set_shader(&shader);
 
             if let Some(pal) = &self.initial_palette {
@@ -85,7 +85,7 @@ impl IMeshInstance3D for FakeWorld {
             godot_error!("FakeWorld: Failed to load shader from res://Shaders/fake_world.gdshader");
         }
 
-        if let Some(mut probe) = self.probe.clone() {
+        if let Some(mut probe) = self.probe.as_ref().and_then(|p| p.clone()) {
             // Create a callable that will call _on_probe_cycle_complete on this FakeWorld instance
             // We need to use the base node's callable since self is &mut FakeWorld, not &Gd<FakeWorld>
             // The callable will be bound to the node that owns this FakeWorld instance
@@ -125,13 +125,14 @@ impl FakeWorld {
 
         godot_print!("FakeWorld: Creating cubemap from {} faces", faces.len());
 
+        // Create cubemap from the probe faces
         let mut typed_faces = Array::new();
         let mut first_format = Format::MAX;
         let mut first_width = 0;
         let mut first_height = 0;
 
         for i in 0..6 {
-            let mut img = faces.at(i); // Must be mut for convert/resize
+            let mut img = faces.at(i);
             if !img.is_instance_valid() {
                 godot_warn!("FakeWorld: Face image {} is invalid", i);
                 return;
@@ -146,18 +147,20 @@ impl FakeWorld {
                 img.resize(first_width, first_height);
             }
 
-            // Pass by reference to satisfy the AsArg requirement for Gd<T> inside Arrays
             typed_faces.push(&img);
         }
 
-        let err = self.cubemap.create_from_images(&typed_faces);
+        // Create the cubemap
+        let err = Cubemap::create_from_images(&typed_faces);
         if err == Error::OK {
             godot_print!("FakeWorld: Cubemap created successfully, setting env_cubemap parameter");
             // Pass the RID of the cubemap, not the resource itself
             // The shader expects a samplerCube which is passed via RID
-            let cubemap_rid = self.cubemap.get_rid();
-            self.material
-                .set_shader_parameter("env_cubemap", &cubemap_rid.to_variant());
+            let cubemap_rid = err;
+            if let Some(mut mat) = self.material.as_ref().cloned() {
+                mat.set_shader_parameter("env_cubemap", &cubemap_rid.to_variant());
+                self.material = Some(mat);
+            }
             godot_print!(
                 "FakeWorld: env_cubemap shader parameter set (RID: {:?})",
                 cubemap_rid
@@ -239,11 +242,13 @@ impl FakeWorld {
 impl Drop for FakeWorld {
     fn drop(&mut self) {
         // Clean up cubemap RID if it exists
-        let rid = self.cubemap.get_rid();
-        if !rid.is_invalid() {
-            let mut rs = RenderingServer::singleton();
-            rs.free_rid(rid);
-            godot_print!("FakeWorld: Cleaned up cubemap RID: {:?}", rid);
+        if let Some(mut cubemap) = self.cubemap.take() {
+            let rid = cubemap.get_rid();
+            if !rid.is_invalid() {
+                let mut rs = RenderingServer::singleton();
+                rs.free_rid(rid);
+                godot_print!("FakeWorld: Cleaned up cubemap RID: {:?}", rid);
+            }
         }
     }
 }
