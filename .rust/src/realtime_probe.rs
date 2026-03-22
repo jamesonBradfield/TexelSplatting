@@ -213,7 +213,7 @@ impl RealtimeProbe {
 
         // Set the cubemap as a shader parameter on the material
         if let Some(mut mat) = self.material.clone() {
-            mat.set_shader_parameter("env_cubemap", &self.cubemap_rid.to_variant::<Rid>());
+            mat.set_shader_parameter("env_cubemap", &self.cubemap_rid.to_variant());
             self.material = Some(mat);
         }
     }
