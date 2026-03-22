@@ -3,6 +3,7 @@ use godot::classes::{
     image::Format,
     Camera3D,
     Cubemap,
+    ImageTextureLayered,
     IMeshInstance3D,
     Image,
     ImageTexture,
@@ -182,7 +183,7 @@ impl FakeWorld {
     #[func]
     pub fn get_cubemap_rid(&self) -> Rid {
         // Returns the cubemap RID for debugging
-        self.cubemap.as_ref().map(|c| c.get_rid()).unwrap_or(Rid::INVALID)
+        self.cubemap.as_ref().map(|c| c.get_rid()).unwrap_or(Rid::Invalid)
     }
 
     #[func]
