@@ -122,7 +122,6 @@ impl FakeWorld {
         _depth_faces: Array<Gd<Image>>,
         cubemap_rid: Rid,
     ) {
-        // doesn't fire for some reason..
         godot_print!(
             "FakeWorld: Received probe_updated signal with cubemap RID: {:?}",
             cubemap_rid

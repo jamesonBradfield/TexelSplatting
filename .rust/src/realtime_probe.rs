@@ -194,21 +194,15 @@ impl RealtimeProbe {
                 }
             }
 
-            // --- THE FIX IS HERE ---
-            // 1. Extract the data into local variables first.
-            // This uses 'self' (immutable borrow) and then finishes.
-            let face_variant = self.get_faces_array().to_variant();
-            let depth_variant = self.get_depth_faces_array().to_variant();
-            let cubemap_variant = self.cubemap_rid.to_variant();
-
-            // 2. Now that the variables are safe, we can mutably borrow the base.
+            // Use typed signal API for type safety
             godot_print!(
                 "RealtimeProbe: Emitting probe_updated signal with cubemap_rid: {:?}",
                 self.cubemap_rid
             );
-            self.base_mut().emit_signal(
-                "probe_updated",
-                &[face_variant, depth_variant, cubemap_variant],
+            self.signals().probe_updated().emit(
+                &self.get_faces_array().to_variant(),
+                &self.get_depth_faces_array().to_variant(),
+                &self.cubemap_rid.to_variant(),
             );
         }
 
