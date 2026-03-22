@@ -117,63 +117,23 @@ impl FakeWorld {
     #[func]
     fn _on_probe_cycle_complete(
         &mut self,
-        faces: Array<Gd<Image>>,
+        _faces: Array<Gd<Image>>,
         _depth_faces: Array<Gd<Image>>,
+        cubemap_rid: Rid,
     ) {
         godot_print!(
-            "FakeWorld: Received probe_updated signal with {} faces",
-            faces.len()
+            "FakeWorld: Received probe_updated signal with cubemap RID: {:?}",
+            cubemap_rid
         );
 
-        if faces.len() != 6 {
-            godot_error!("FakeWorld: Expected 6 faces, got {}", faces.len());
-            return;
-        }
-
-        godot_print!("FakeWorld: Creating cubemap from {} faces", faces.len());
-
-        // Create cubemap from the probe faces
-        let mut typed_faces = Array::new();
-        let mut first_format = Format::MAX;
-        let mut first_width = 0;
-        let mut first_height = 0;
-
-        for i in 0..6 {
-            let mut img = faces.at(i);
-            if !img.is_instance_valid() {
-                godot_warn!("FakeWorld: Face image {} is invalid", i);
-                return;
-            }
-
-            if i == 0 {
-                first_format = img.get_format();
-                first_width = img.get_width();
-                first_height = img.get_height();
-            } else if img.get_width() != first_width || img.get_format() != first_format {
-                img.convert(first_format);
-                img.resize(first_width, first_height);
-            }
-
-            typed_faces.push(&img);
-        }
-
-        // Create the cubemap from images
-        let mut cubemap = Cubemap::new_gd();
-        let err = cubemap.upcast_mut::<ImageTextureLayered>().create_from_images(&typed_faces);
-        if err != Error::OK {
-            godot_error!("FakeWorld: Failed to create cubemap, error code: {:?}", err);
-            return;
-        }
-        godot_print!("FakeWorld: Cubemap created successfully, setting env_cubemap parameter");
-        
-        // Pass the RID of the cubemap to the shader
+        // Pass the cubemap RID directly to the shader
         if let Some(mut mat) = self.material.as_ref().cloned() {
-            mat.set_shader_parameter("env_cubemap", &cubemap.get_rid().to_variant());
+            mat.set_shader_parameter("env_cubemap", &cubemap_rid.to_variant());
             self.material = Some(mat);
         }
         godot_print!(
             "FakeWorld: env_cubemap shader parameter set (RID: {:?})",
-            cubemap.get_rid()
+            cubemap_rid
         );
     }
 

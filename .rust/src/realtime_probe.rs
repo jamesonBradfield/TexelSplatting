@@ -80,7 +80,7 @@ impl INode3D for RealtimeProbe {
 #[godot_api]
 impl RealtimeProbe {
     #[signal]
-    fn probe_updated(images: Array<Gd<Image>>, depth_images: Array<Gd<Image>>);
+    fn probe_updated(images: Array<Gd<Image>>, depth_images: Array<Gd<Image>>, cubemap_rid: Rid);
 
     #[func]
     pub fn get_cubemap_rid(&self) -> Rid {
@@ -199,11 +199,12 @@ impl RealtimeProbe {
             // This uses 'self' (immutable borrow) and then finishes.
             let face_variant = self.get_faces_array().to_variant();
             let depth_variant = self.get_depth_faces_array().to_variant();
+            let cubemap_variant = self.cubemap_rid.to_variant();
 
             // 2. Now that the variables are safe, we can mutably borrow the base.
             godot_print!("RealtimeProbe: Emitting probe_updated signal");
             self.base_mut()
-                .emit_signal("probe_updated", &[face_variant, depth_variant]);
+                .emit_signal("probe_updated", &[face_variant, depth_variant, cubemap_variant]);
         }
 
         // Update the fake world position after capture
