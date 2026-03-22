@@ -152,7 +152,7 @@ impl FakeWorld {
         }
 
         // Create the cubemap from images
-        let mut cubemap = ImageTextureLayered::new();
+        let mut cubemap = Gd::new_alloc(ImageTextureLayered::new()).expect("Failed to create ImageTextureLayered");
         let err = cubemap.create_from_images(&typed_faces);
         if err != Error::OK {
             godot_error!("FakeWorld: Failed to create cubemap, error code: {:?}", err);
