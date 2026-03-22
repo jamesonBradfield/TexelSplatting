@@ -31,3 +31,5 @@ Thumbs.db
 .aider*
 # Debugging / Macro Expansion
 expanded_debug.rs
+test_run.log
+reports/
