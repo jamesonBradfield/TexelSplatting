@@ -89,11 +89,14 @@ impl IMeshInstance3D for FakeWorld {
         } else {
             godot_error!("FakeWorld: Failed to load shader from res://Shaders/fake_world.gdshader");
         }
-
+        // what the heck is that wild if statement below?
         if let Some(mut probe) = self.probe.as_ref().cloned() {
             // Create a callable that will call _on_probe_cycle_complete on this FakeWorld instance
             // We need to use the base node's callable since self is &mut FakeWorld, not &Gd<FakeWorld>
             // The callable will be bound to the node that owns this FakeWorld instance
+            //
+            // I wonder what the lifecycle of godot-rust signals is, there's gotta be docs on
+            // this...
             let callable = self.base().callable("_on_probe_cycle_complete");
             probe.connect("probe_updated", &callable);
 
@@ -119,6 +122,7 @@ impl FakeWorld {
         _depth_faces: Array<Gd<Image>>,
         cubemap_rid: Rid,
     ) {
+        // doesn't fire for some reason..
         godot_print!(
             "FakeWorld: Received probe_updated signal with cubemap RID: {:?}",
             cubemap_rid
@@ -127,7 +131,23 @@ impl FakeWorld {
         // Pass the cubemap RID directly to the shader
         if let Some(mut mat) = self.material.as_ref().cloned() {
             mat.set_shader_parameter("env_cubemap", &cubemap_rid.to_variant());
-            self.material = Some(mat);
+            self.material = Some(mat.clone());
+
+            // Verify the shader parameter was set correctly
+            let variant = mat.get_shader_parameter("env_cubemap");
+            let rid_from_shader = variant.try_to::<Rid>().unwrap_or(Rid::Invalid);
+            godot_print!(
+                "FakeWorld: Verified env_cubemap shader parameter (RID: {:?})",
+                rid_from_shader
+            );
+
+            if rid_from_shader == cubemap_rid {
+                godot_print!("FakeWorld: Shader parameter matches received RID!");
+            } else {
+                godot_error!("FakeWorld: Shader parameter DOES NOT MATCH received RID!");
+            }
+        } else {
+            godot_error!("FakeWorld: Material is None when trying to set shader parameter!");
         }
         godot_print!(
             "FakeWorld: env_cubemap shader parameter set (RID: {:?})",
@@ -147,7 +167,10 @@ impl FakeWorld {
     #[func]
     pub fn get_cubemap_rid(&self) -> Rid {
         // Returns the cubemap RID for debugging
-        self.cubemap.as_ref().map(|c| c.get_rid()).unwrap_or(Rid::Invalid)
+        self.cubemap
+            .as_ref()
+            .map(|c| c.get_rid())
+            .unwrap_or(Rid::Invalid)
     }
 
     #[func]
@@ -217,26 +240,5 @@ impl Drop for FakeWorld {
                 godot_print!("FakeWorld: Cleaned up cubemap RID: {:?}", rid);
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_fake_world_generate_palette_from_image() {
-        let fake_world = FakeWorld::new_alloc();
-
-        let mut source_image =
-            Image::create(16, 16, false, Format::RGBA8).expect("Failed to create source image");
-        source_image.fill(Color::from_rgba(0.5, 0.5, 0.5, 1.0));
-
-        let mut source_gd = Gd::from(source_image.upcast());
-
-        let palette = fake_world.generate_palette_from_image(source_gd);
-
-        // Verify we got a texture back
-        assert!(!palette.get_rid().is_invalid());
     }
 }

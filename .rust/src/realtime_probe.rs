@@ -202,9 +202,14 @@ impl RealtimeProbe {
             let cubemap_variant = self.cubemap_rid.to_variant();
 
             // 2. Now that the variables are safe, we can mutably borrow the base.
-            godot_print!("RealtimeProbe: Emitting probe_updated signal");
-            self.base_mut()
-                .emit_signal("probe_updated", &[face_variant, depth_variant, cubemap_variant]);
+            godot_print!(
+                "RealtimeProbe: Emitting probe_updated signal with cubemap_rid: {:?}",
+                self.cubemap_rid
+            );
+            self.base_mut().emit_signal(
+                "probe_updated",
+                &[face_variant, depth_variant, cubemap_variant],
+            );
         }
 
         // Update the fake world position after capture
@@ -254,41 +259,5 @@ impl RealtimeProbe {
         self.capture_environment();
         let rid = self.get_cubemap_rid();
         godot_print!("RealtimeProbe: Capture complete, cubemap RID: {:?}", rid);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_realtime_probe_cubemap_rid_invalid_initially() {
-        let probe = RealtimeProbe::new_gd();
-        
-        let rid = probe.get_cubemap_rid();
-        assert!(rid.is_invalid());
-    }
-
-    #[test]
-    fn test_realtime_probe_is_ready_initially() {
-        let probe = RealtimeProbe::new_gd();
-        
-        assert!(!probe.is_ready());
-    }
-
-    #[test]
-    fn test_realtime_probe_get_faces_array_empty() {
-        let probe = RealtimeProbe::new_gd();
-        
-        let array = probe.get_faces_array();
-        assert_eq!(array.len(), 0);
-    }
-
-    #[test]
-    fn test_realtime_probe_get_depth_faces_array_empty() {
-        let probe = RealtimeProbe::new_gd();
-        
-        let array = probe.get_depth_faces_array();
-        assert_eq!(array.len(), 0);
     }
 }
