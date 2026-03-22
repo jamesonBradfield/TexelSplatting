@@ -1,6 +1,6 @@
 use godot::classes::{
     rendering_server::TextureLayeredType, Camera3D, INode3D, Image, Node3D, RenderingServer,
-    SubViewport,
+    ShaderMaterial, SubViewport,
 };
 use godot::prelude::*;
 
@@ -213,7 +213,7 @@ impl RealtimeProbe {
 
         // Set the cubemap as a shader parameter on the material
         if let Some(mut mat) = self.material.clone() {
-            mat.set_shader_parameter("env_cubemap", &self.cubemap_rid.to_variant());
+            mat.set_shader_parameter("env_cubemap", &self.cubemap_rid.to_variant::<Rid>());
             self.material = Some(mat);
         }
     }
