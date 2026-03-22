@@ -69,6 +69,12 @@ impl IMeshInstance3D for FakeWorld {
             }
         }
 
+        // Create material if it doesn't exist
+        if self.material.is_none() {
+            self.material = Some(ShaderMaterial::new_gd());
+            godot_print!("FakeWorld: Created new ShaderMaterial");
+        }
+
         if let Some(shader) = godot::classes::ResourceLoader::singleton()
             .load("res://Shaders/fake_world.gdshader")
             .map(|res| res.cast::<Shader>())
@@ -156,23 +162,19 @@ impl FakeWorld {
         let err = cubemap.upcast_mut::<ImageTextureLayered>().create_from_images(&typed_faces);
         if err != Error::OK {
             godot_error!("FakeWorld: Failed to create cubemap, error code: {:?}", err);
+            return;
         }
-        if err == Error::OK {
-            godot_print!("FakeWorld: Cubemap created successfully, setting env_cubemap parameter");
-            // Pass the RID of the cubemap, not the resource itself
-            // The shader expects a samplerCube which is passed via RID
-            let cubemap_rid = err;
-            if let Some(mut mat) = self.material.as_ref().cloned() {
-                mat.set_shader_parameter("env_cubemap", &cubemap.get_rid().to_variant());
-                self.material = Some(mat);
-            }
-            godot_print!(
-                "FakeWorld: env_cubemap shader parameter set (RID: {:?})",
-                cubemap_rid
-            );
-        } else {
-            // Already handled above
+        godot_print!("FakeWorld: Cubemap created successfully, setting env_cubemap parameter");
+        
+        // Pass the RID of the cubemap to the shader
+        if let Some(mut mat) = self.material.as_ref().cloned() {
+            mat.set_shader_parameter("env_cubemap", &cubemap.get_rid().to_variant());
+            self.material = Some(mat);
         }
+        godot_print!(
+            "FakeWorld: env_cubemap shader parameter set (RID: {:?})",
+            cubemap.get_rid()
+        );
     }
 
     #[func]

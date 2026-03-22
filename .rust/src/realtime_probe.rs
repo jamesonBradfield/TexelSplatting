@@ -201,6 +201,11 @@ impl RealtimeProbe {
             self.base_mut()
                 .emit_signal("probe_updated", &[face_variant, depth_variant]);
         }
+
+        // Update the fake world position after capture
+        if let Some(mut fw) = self.fake_world_node.clone() {
+            fw.call("update_fake_world_position", &[]);
+        }
     }
 
     #[func]
@@ -219,6 +224,7 @@ impl RealtimeProbe {
         if let Some(mut fw) = self.fake_world_node.clone() {
             let pos = self.base().get_global_position();
             fw.set_global_position(pos);
+            godot_print!("RealtimeProbe: Updated fake world position to {:?}", pos);
         }
     }
 
@@ -235,7 +241,8 @@ impl RealtimeProbe {
         }
 
         self.capture_environment();
-        godot_print!("RealtimeProbe: Capture complete, cubemap RID: {:?}", self.cubemap_rid);
+        let rid = self.get_cubemap_rid();
+        godot_print!("RealtimeProbe: Capture complete, cubemap RID: {:?}", rid);
     }
 }
 
