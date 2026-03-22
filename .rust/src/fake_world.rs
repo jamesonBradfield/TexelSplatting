@@ -150,8 +150,8 @@ impl FakeWorld {
             typed_faces.push(&img);
         }
 
-        // Create the cubemap
-        let err = Cubemap::create_from_images(&typed_faces);
+        // Create the cubemap from images
+        let err = ImageTextureLayered::create_from_images(&typed_faces);
         if err == Error::OK {
             godot_print!("FakeWorld: Cubemap created successfully, setting env_cubemap parameter");
             // Pass the RID of the cubemap, not the resource itself
@@ -173,14 +173,16 @@ impl FakeWorld {
     #[func]
     fn set_palette(&mut self, palette_texture: Gd<Texture2D>) {
         self.initial_palette = Some(palette_texture.clone());
-        self.material
-            .set_shader_parameter("palette", &palette_texture.to_variant());
+        if let Some(mut mat) = self.material.clone() {
+            mat.set_shader_parameter("palette", &palette_texture.to_variant());
+            self.material = Some(mat);
+        }
     }
 
     #[func]
     pub fn get_cubemap_rid(&self) -> Rid {
         // Returns the cubemap RID for debugging
-        self.cubemap.get_rid()
+        self.cubemap.as_ref().map(|c| c.get_rid()).unwrap_or(Rid::INVALID)
     }
 
     #[func]
@@ -242,7 +244,7 @@ impl FakeWorld {
 impl Drop for FakeWorld {
     fn drop(&mut self) {
         // Clean up cubemap RID if it exists
-        if let Some(mut cubemap) = self.cubemap.take() {
+        if let Some(cubemap) = self.cubemap.take() {
             let rid = cubemap.get_rid();
             if !rid.is_invalid() {
                 let mut rs = RenderingServer::singleton();
