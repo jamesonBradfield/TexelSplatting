@@ -19,3 +19,4 @@
 * **Variants:** Convert and pass by reference: `&val.to_variant()`.
 * **Strings:** Pass standard Rust string slices directly (handled automatically via `AsArg`).
 * **Upcasting:** Use `.upcast::<TargetType>()` explicitly for parent class methods (e.g., `mat.upcast::<Material>()`).
+* **Typed Signals:** When using `self.signals().my_signal().emit(...)`, you MUST obey ToGodot passing rules: Pass ByRef types (like Array, Gd<T>, StringName) by reference (e.g., &array). Pass ByValue types (like Rid, Vector3, i32) by value (e.g., my_rid). Do NOT append .to_variant() or .clone() to arguments in typed signal emissions.
