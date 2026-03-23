@@ -32,7 +32,6 @@ pub struct FakeWorld {
     pal: Option<Gd<Texture2D>>,
 
     base: Base<MeshInstance3D>,
-    parent_node: Option<Base<Node3D>>,
 }
 
 #[godot_api]
@@ -46,7 +45,6 @@ impl IMeshInstance3D for FakeWorld {
             material: None,
             pal: None,
             base,
-            parent_node: None,
         }
     }
 
