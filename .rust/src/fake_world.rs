@@ -6,9 +6,10 @@ use godot::classes::{
     IMeshInstance3D,
     Image,
     ImageTexture,
-    Material, // <-- Add Material here
+    Material,
     MeshInstance3D,
     Node3D,
+    RealtimeProbe,
     RenderingServer,
     Shader,
     ShaderMaterial,
@@ -99,11 +100,14 @@ impl IMeshInstance3D for FakeWorld {
         // Connect to the probe_updated signal using typed signal API
         // The signal is declared in RealtimeProbe and emits: Array<Gd<Image>>, Array<Gd<Image>>, Rid
         // For typed signals, pass ByRef types (Array, Gd<T>) by reference, ByValue types (Rid) by value
-        if let Some(mut probe) = self.probe.as_ref().cloned() {
-            let callable = self.base().callable("_on_probe_cycle_complete");
-            probe.connect("probe_updated", &callable);
-
-            godot_print!("FakeWorld: Connected probe_updated signal to _on_probe_cycle_complete");
+        if let Some(probe_node) = self.probe.as_ref().cloned() {
+            if let Ok(probe) = probe_node.try_cast::<RealtimeProbe>() {
+                let callable = self.base().callable("_on_probe_cycle_complete");
+                probe.connect("probe_updated", &callable);
+                godot_print!("FakeWorld: Connected probe_updated signal to _on_probe_cycle_complete");
+            } else {
+                godot_warn!("FakeWorld: Probe is not a RealtimeProbe!");
+            }
         } else {
             godot_warn!("FakeWorld: No probe assigned!");
         }
@@ -132,6 +136,7 @@ impl FakeWorld {
 
         // Pass the cubemap RID directly to the shader
         if let Some(ref mut mat) = self.material {
+            // Set the shader parameter directly on the stored material
             mat.set_shader_parameter("env_cubemap", &cubemap_rid.to_variant());
 
             // Verify the shader parameter was set correctly
