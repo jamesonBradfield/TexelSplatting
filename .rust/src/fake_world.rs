@@ -1,3 +1,4 @@
+use crate::realtime_probe::RealtimeProbe;
 use godot::classes::{
     geometry_instance_3d::ShadowCastingSetting,
     image::Format,
@@ -9,7 +10,6 @@ use godot::classes::{
     Material,
     MeshInstance3D,
     Node3D,
-    RealtimeProbe,
     RenderingServer,
     Shader,
     ShaderMaterial,
