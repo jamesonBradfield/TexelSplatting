@@ -83,6 +83,12 @@ impl RealtimeProbe {
     fn probe_updated(images: Array<Gd<Image>>, depth_images: Array<Gd<Image>>, cubemap_rid: Rid);
 
     #[func]
+    pub fn connect_probe_updated_signal(&self, callable: Callable) {
+        // Helper to connect the signal externally if needed
+        self.base().connect("probe_updated", &callable);
+    }
+
+    #[func]
     pub fn get_cubemap_rid(&self) -> Rid {
         self.cubemap_rid
     }
@@ -137,6 +143,7 @@ impl RealtimeProbe {
     #[func]
     fn capture_environment(&mut self) {
         if self.cameras.len() != 6 {
+            godot_warn!("RealtimeProbe: Not all cameras ready for capture");
             return;
         }
 
@@ -199,16 +206,18 @@ impl RealtimeProbe {
             let depth_faces_array = self.get_depth_faces_array();
             let cubemap_rid = self.cubemap_rid;
 
-            // Use typed signal API for type safety
             godot_print!(
                 "RealtimeProbe: Emitting probe_updated signal with cubemap_rid: {:?}",
                 cubemap_rid
             );
+            // Typed signal emission - pass ByRef types by reference, ByValue types by value
             self.signals().probe_updated().emit(
                 &faces_array,
                 &depth_faces_array,
                 cubemap_rid,
             );
+        } else {
+            godot_warn!("RealtimeProbe: Failed to capture all 6 faces");
         }
 
         // Update the fake world position after capture
@@ -258,5 +267,11 @@ impl RealtimeProbe {
         self.capture_environment();
         let rid = self.get_cubemap_rid();
         godot_print!("RealtimeProbe: Capture complete, cubemap RID: {:?}", rid);
+    }
+
+    #[func]
+    pub fn get_probe_updated_signal(&self) -> Callable {
+        // Get the signal callable for external connections
+        self.base().callable("probe_updated")
     }
 }

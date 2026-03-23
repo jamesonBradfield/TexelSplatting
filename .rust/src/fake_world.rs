@@ -91,16 +91,13 @@ impl IMeshInstance3D for FakeWorld {
         }
         // what the heck is that wild if statement below?
         if let Some(mut probe) = self.probe.as_ref().cloned() {
-            // Create a callable that will call _on_probe_cycle_complete on this FakeWorld instance
-            // We need to use the base node's callable since self is &mut FakeWorld, not &Gd<FakeWorld>
-            // The callable will be bound to the node that owns this FakeWorld instance
-            //
-            // I wonder what the lifecycle of godot-rust signals is, there's gotta be docs on
-            // this...
+            // Connect to the probe_updated signal using typed signal API
+            // The signal is declared in RealtimeProbe and emits: Array<Gd<Image>>, Array<Gd<Image>>, Rid
+            // For typed signals, pass ByRef types (Array, Gd<T>) by reference, ByValue types (Rid) by value
             let callable = self.base().callable("_on_probe_cycle_complete");
             probe.connect("probe_updated", &callable);
 
-            godot_print!("FakeWorld: Connected probe signal to _on_probe_cycle_complete");
+            godot_print!("FakeWorld: Connected probe_updated signal to _on_probe_cycle_complete");
         } else {
             godot_warn!("FakeWorld: No probe assigned!");
         }
@@ -118,8 +115,8 @@ impl FakeWorld {
     #[func]
     fn _on_probe_cycle_complete(
         &mut self,
-        _faces: Array<Gd<Image>>,
-        _depth_faces: Array<Gd<Image>>,
+        faces: Array<Gd<Image>>,
+        depth_faces: Array<Gd<Image>>,
         cubemap_rid: Rid,
     ) {
         godot_print!(
