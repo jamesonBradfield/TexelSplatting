@@ -6,7 +6,7 @@
 * **Workspace:** Run all tools from the Godot project root.
 * **Unified Tests:** Execute `run_tests.bat` (Builds `.dll` and runs GdUnit4 headless).
 * **Macro Errors:** If Rust compiler fails inside a macro, execute `cargo expand -p <crate> --lib <mod> > expanded_debug.rs`. Read it, fix the type mismatch, and delete the file.
-
+* **Building:** ALWAYS execute `build.bat` instead of `cargo build`. This script compiles the crate and copies the artifacts to the `bin/` directory to prevent Windows OS Error 5 (file locks) while the Godot editor is open. Do NOT run `cargo build` directly.
 ## 2. MEMORY & THREADING (STRICT)
 * **RIDs:** Raw pointers (`RenderingServer`, etc.) MUST be explicitly freed in the Rust `Drop` trait to prevent leaks.
 * **Batching:** NEVER loop over instances in a tick. Build flat buffers (`PackedFloat32Array`) and set them at once.
