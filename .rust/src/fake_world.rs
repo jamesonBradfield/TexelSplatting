@@ -31,6 +31,7 @@ pub struct FakeWorld {
     pal: Option<Gd<Texture2D>>,
 
     base: Base<MeshInstance3D>,
+    parent_node: Option<Base<Node3D>>,
 }
 
 #[godot_api]
@@ -44,6 +45,7 @@ impl IMeshInstance3D for FakeWorld {
             material: None,
             pal: None,
             base,
+            parent_node: None,
         }
     }
 
@@ -87,8 +89,13 @@ impl IMeshInstance3D for FakeWorld {
             }
             mat.set_shader_parameter("env_cubemap", &Rid::Invalid.to_variant());
 
-            self.base_mut()
-                .set_material_override(&mat.upcast::<Material>());
+            // Get the parent Node3D and set material override there
+            if let Some(parent) = self.base().get_parent() {
+                if let Ok(parent_node) = parent.try_cast::<Node3D>() {
+                    parent_node.set_material_override(&mat.upcast::<Material>());
+                    self.parent_node = Some(parent_node.base());
+                }
+            }
         } else {
             godot_error!("FakeWorld: Failed to load shader from res://Shaders/fake_world.gdshader");
         }
