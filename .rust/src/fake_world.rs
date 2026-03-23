@@ -101,7 +101,7 @@ impl IMeshInstance3D for FakeWorld {
         // The signal is declared in RealtimeProbe and emits: Array<Gd<Image>>, Array<Gd<Image>>, Rid
         // For typed signals, pass ByRef types (Array, Gd<T>) by reference, ByValue types (Rid) by value
         if let Some(probe_node) = self.probe.as_ref().cloned() {
-            if let Ok(probe) = probe_node.try_cast::<RealtimeProbe>() {
+            if let Ok(mut probe) = probe_node.try_cast::<RealtimeProbe>() {
                 let callable = self.base().callable("_on_probe_cycle_complete");
                 probe.connect("probe_updated", &callable);
                 godot_print!("FakeWorld: Connected probe_updated signal to _on_probe_cycle_complete");
