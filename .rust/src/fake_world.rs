@@ -83,8 +83,8 @@ impl IMeshInstance3D for FakeWorld {
             mat.set_shader(&shader);
 
             // Configure material to be transparent and allow light through
-            mat.set_transparency_mode(godot::classes::ShaderMaterial::TransparencyMode::BLEND);
-            mat.set_cull_mode(godot::classes::Material::CullMode::BOTH);
+            mat.upcast::<godot::classes::Material>().set_transparency_mode(godot::classes::Material::TransparencyMode::BLEND);
+            mat.upcast::<godot::classes::Material>().set_cull_mode(godot::classes::Material::CullMode::BOTH);
             if let Some(palette) = &self.pal {
                 mat.set_shader_parameter("palette", &palette.to_variant());
             }
@@ -158,8 +158,8 @@ impl FakeWorld {
 
         // Ensure material remains transparent after update
         if let Some(mat) = self.material.as_ref() {
-            mat.set_transparency_mode(godot::classes::ShaderMaterial::TransparencyMode::BLEND);
-            mat.set_cull_mode(godot::classes::Material::CullMode::BOTH);
+            mat.upcast::<godot::classes::Material>().set_transparency_mode(godot::classes::Material::TransparencyMode::BLEND);
+            mat.upcast::<godot::classes::Material>().set_cull_mode(godot::classes::Material::CullMode::BOTH);
         }
     }
 
