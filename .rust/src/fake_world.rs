@@ -28,6 +28,7 @@ pub struct FakeWorld {
     player_camera: Option<Gd<Camera3D>>,
     cubemap: Option<Gd<Cubemap>>,
     material: Option<Gd<ShaderMaterial>>,
+    pal: Option<Gd<Texture2D>>,
 
     base: Base<MeshInstance3D>,
 }
@@ -41,6 +42,7 @@ impl IMeshInstance3D for FakeWorld {
             player_camera: None,
             cubemap: None,
             material: None,
+            pal: None,
             base,
         }
     }
@@ -48,8 +50,6 @@ impl IMeshInstance3D for FakeWorld {
     fn ready(&mut self) {
         self.base_mut()
             .set_cast_shadows_setting(ShadowCastingSetting::OFF);
-        // Make the mesh instance transparent so light can pass through
-        self.base_mut().set_surface_material_mode(godot::classes::MeshInstance3D::SurfaceMaterialMode::ALWAYS);
 
         let mut tree = self.base().get_tree().unwrap();
 
@@ -83,9 +83,11 @@ impl IMeshInstance3D for FakeWorld {
             mat.set_shader(&shader);
 
             // Configure material to be transparent and allow light through
-            mat.set_transparency(godot::classes::Material::Transparency::BLEND);
+            mat.set_transparency_mode(godot::classes::ShaderMaterial::TransparencyMode::BLEND);
             mat.set_cull_mode(godot::classes::Material::CullMode::BOTH);
-            mat.set_shader_parameter("palette", &pal.to_variant());
+            if let Some(palette) = &self.pal {
+                mat.set_shader_parameter("palette", &palette.to_variant());
+            }
             mat.set_shader_parameter("env_cubemap", &Rid::Invalid.to_variant());
 
             self.base_mut()
@@ -156,7 +158,7 @@ impl FakeWorld {
 
         // Ensure material remains transparent after update
         if let Some(mat) = self.material.as_ref() {
-            mat.set_transparency(godot::classes::Material::Transparency::BLEND);
+            mat.set_transparency_mode(godot::classes::ShaderMaterial::TransparencyMode::BLEND);
             mat.set_cull_mode(godot::classes::Material::CullMode::BOTH);
         }
     }
@@ -164,6 +166,7 @@ impl FakeWorld {
     #[func]
     fn set_palette(&mut self, palette_texture: Gd<Texture2D>) {
         self.initial_palette = Some(palette_texture.clone());
+        self.pal = Some(palette_texture.clone());
         if let Some(mut mat) = self.material.clone() {
             mat.set_shader_parameter("palette", &palette_texture.to_variant());
             self.material = Some(mat);
