@@ -83,9 +83,9 @@ impl RealtimeProbe {
     fn probe_updated(images: Array<Gd<Image>>, depth_images: Array<Gd<Image>>, cubemap_rid: Rid);
 
     #[func]
-    pub fn connect_probe_updated_signal(&self, callable: Callable) {
+    pub fn connect_probe_updated_signal(&mut self, callable: Callable) {
         // Helper to connect the signal externally if needed
-        self.base().connect("probe_updated", &callable);
+        self.base_mut().connect("probe_updated", &callable);
     }
 
     #[func]

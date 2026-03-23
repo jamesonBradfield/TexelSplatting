@@ -115,8 +115,8 @@ impl FakeWorld {
     #[func]
     fn _on_probe_cycle_complete(
         &mut self,
-        faces: Array<Gd<Image>>,
-        depth_faces: Array<Gd<Image>>,
+        _faces: Array<Gd<Image>>,
+        _depth_faces: Array<Gd<Image>>,
         cubemap_rid: Rid,
     ) {
         godot_print!(
