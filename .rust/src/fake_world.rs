@@ -92,11 +92,10 @@ impl IMeshInstance3D for FakeWorld {
         } else {
             godot_error!("FakeWorld: Failed to load shader from res://Shaders/fake_world.gdshader");
         }
-        // what the heck is that wild if statement below?
+        // Connect to the probe_updated signal using typed signal API
+        // The signal is declared in RealtimeProbe and emits: Array<Gd<Image>>, Array<Gd<Image>>, Rid
+        // For typed signals, pass ByRef types (Array, Gd<T>) by reference, ByValue types (Rid) by value
         if let Some(mut probe) = self.probe.as_ref().cloned() {
-            // Connect to the probe_updated signal using typed signal API
-            // The signal is declared in RealtimeProbe and emits: Array<Gd<Image>>, Array<Gd<Image>>, Rid
-            // For typed signals, pass ByRef types (Array, Gd<T>) by reference, ByValue types (Rid) by value
             let callable = self.base().callable("_on_probe_cycle_complete");
             probe.connect("probe_updated", &callable);
 
@@ -128,9 +127,8 @@ impl FakeWorld {
         );
 
         // Pass the cubemap RID directly to the shader
-        if let Some(mut mat) = self.material.as_ref().cloned() {
+        if let Some(ref mut mat) = self.material {
             mat.set_shader_parameter("env_cubemap", &cubemap_rid.to_variant());
-            self.material = Some(mat.clone());
 
             // Verify the shader parameter was set correctly
             let variant = mat.get_shader_parameter("env_cubemap");
@@ -232,7 +230,7 @@ impl FakeWorld {
 impl Drop for FakeWorld {
     fn drop(&mut self) {
         // Clean up cubemap RID if it exists
-        if let Some(cubemap) = self.cubemap.take() {
+        if let Some(ref cubemap) = self.cubemap {
             let rid = cubemap.get_rid();
             if !rid.is_invalid() {
                 let mut rs = RenderingServer::singleton();
