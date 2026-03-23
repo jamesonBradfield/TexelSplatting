@@ -48,6 +48,8 @@ impl IMeshInstance3D for FakeWorld {
     fn ready(&mut self) {
         self.base_mut()
             .set_cast_shadows_setting(ShadowCastingSetting::OFF);
+        // Make the mesh instance transparent so light can pass through
+        self.base_mut().set_surface_material_mode(godot::classes::MeshInstance3D::SurfaceMaterialMode::ALWAYS);
 
         let mut tree = self.base().get_tree().unwrap();
 
@@ -80,9 +82,11 @@ impl IMeshInstance3D for FakeWorld {
             let mut mat = self.material.as_ref().unwrap().clone();
             mat.set_shader(&shader);
 
-            if let Some(pal) = &self.initial_palette {
-                mat.set_shader_parameter("palette", &pal.to_variant());
-            }
+            // Configure material to be transparent and allow light through
+            mat.set_transparency(godot::classes::Material::Transparency::BLEND);
+            mat.set_cull_mode(godot::classes::Material::CullMode::BOTH);
+            mat.set_shader_parameter("palette", &pal.to_variant());
+            mat.set_shader_parameter("env_cubemap", &Rid::Invalid.to_variant());
 
             self.base_mut()
                 .set_material_override(&mat.upcast::<Material>());
@@ -149,6 +153,12 @@ impl FakeWorld {
             "FakeWorld: env_cubemap shader parameter set (RID: {:?})",
             cubemap_rid
         );
+
+        // Ensure material remains transparent after update
+        if let Some(mat) = self.material.as_ref() {
+            mat.set_transparency(godot::classes::Material::Transparency::BLEND);
+            mat.set_cull_mode(godot::classes::Material::CullMode::BOTH);
+        }
     }
 
     #[func]
