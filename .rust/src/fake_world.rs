@@ -89,13 +89,9 @@ impl IMeshInstance3D for FakeWorld {
             }
             mat.set_shader_parameter("env_cubemap", &Rid::Invalid.to_variant());
 
-            // Get the parent Node3D and set material override there
-            if let Some(parent) = self.base().get_parent() {
-                if let Ok(parent_node) = parent.try_cast::<Node3D>() {
-                    parent_node.set_material_override(&mat.upcast::<Material>());
-                    self.parent_node = Some(parent_node.base());
-                }
-            }
+            // Set material override on the MeshInstance3D itself (self.base())
+            self.base_mut().set_material_override(&mat.upcast::<Material>());
+            self.parent_node = Some(self.base().get_parent().ok().and_then(|p| p.try_cast::<Node3D>().ok()).map(|n| n.base()));
         } else {
             godot_error!("FakeWorld: Failed to load shader from res://Shaders/fake_world.gdshader");
         }
