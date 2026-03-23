@@ -82,9 +82,6 @@ impl IMeshInstance3D for FakeWorld {
             let mut mat = self.material.as_ref().unwrap().clone();
             mat.set_shader(&shader);
 
-            // Configure material to be transparent and allow light through
-            mat.upcast::<godot::classes::Material>().set_transparency_mode(godot::classes::Material::TransparencyMode::BLEND);
-            mat.upcast::<godot::classes::Material>().set_cull_mode(godot::classes::Material::CullMode::BOTH);
             if let Some(palette) = &self.pal {
                 mat.set_shader_parameter("palette", &palette.to_variant());
             }
@@ -155,12 +152,6 @@ impl FakeWorld {
             "FakeWorld: env_cubemap shader parameter set (RID: {:?})",
             cubemap_rid
         );
-
-        // Ensure material remains transparent after update
-        if let Some(mat) = self.material.as_ref() {
-            mat.upcast::<godot::classes::Material>().set_transparency_mode(godot::classes::Material::TransparencyMode::BLEND);
-            mat.upcast::<godot::classes::Material>().set_cull_mode(godot::classes::Material::CullMode::BOTH);
-        }
     }
 
     #[func]
