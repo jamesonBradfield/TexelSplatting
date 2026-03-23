@@ -136,7 +136,7 @@ impl RealtimeProbe {
             self.base_mut().add_child(&vp_gd);
 
             // Clone camera for later use in capture
-            self.cameras.push(&cam_gd.clone());
+            self.cameras.push(cam_gd.clone());
         }
     }
 
