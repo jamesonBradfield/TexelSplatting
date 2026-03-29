@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode blend_mix, cull_disabled, shadows_disabled;
+render_mode unshaded;
 
 uniform samplerCube env_cubemap : filter_nearest, source_color;
 uniform sampler2D palette : filter_nearest, source_color, hint_default_black;

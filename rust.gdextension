@@ -4,14 +4,14 @@ compatibility_minimum = 4.3
 reloadable = true
 
 [libraries]
-linux.debug.x86_64 =     "res:/bin/libtexel_splatting.so"
-linux.release.x86_64 =   "res:/bin/libtexel_splatting.so"
-windows.debug.x86_64 =   "res:/bin/texel_splatting.dll"
-windows.release.x86_64 = "res:/bin/texel_splatting.dll"
-macos.debug =            "res:/bin/libtexel_splatting.dylib"
-macos.release =          "res:/bin/libtexel_splatting.dylib"
-macos.debug.arm64 =      "res:/bin/libtexel_splatting.dylib"
-macos.release.arm64 =    "res:/bin/libtexel_splatting.dylib"
+linux.debug.x86_64 =     "res://bin/libtexel_splatting.so"
+linux.release.x86_64 =   "res://bin/libtexel_splatting.so"
+windows.debug.x86_64 =   "res://bin/texel_splatting.dll"
+windows.release.x86_64 = "res://bin/texel_splatting.dll"
+macos.debug =            "res://bin/libtexel_splatting.dylib"
+macos.release =          "res://bin/libtexel_splatting.dylib"
+macos.debug.arm64 =      "res://bin/libtexel_splatting.dylib"
+macos.release.arm64 =    "res://bin/libtexel_splatting.dylib"
 
 [icons]
 Player = "icon.png"

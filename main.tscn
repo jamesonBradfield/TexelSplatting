@@ -3,6 +3,8 @@
 [ext_resource type="Script" uid="uid://cpwnb74w1qkkt" path="res://Scripts/RenderManager.gd" id="2_h2yge"]
 [ext_resource type="Script" uid="uid://b4wbouohnwogk" path="res://Scripts/RenderSettings.gd" id="3_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://bwggrf7sbmkcv" path="res://addons/PlayerCharacter/player_character_scene.tscn" id="6_7mycd"]
+[ext_resource type="Texture2D" uid="uid://bw3pfwi7ij06l" path="res://palettes/aap-64-1x.png" id="6_272bh"]
+[ext_resource type="Material" uid="uid://eahlk6f0yfvp" path="res://Shaders/fake_world_mat.tres" id="7_5vw27"]
 [ext_resource type="Texture2D" uid="uid://dfip8lppmomm5" path="res://addons/kenney_prototype_textures/dark/texture_01.png" id="7_272bh"]
 [ext_resource type="Script" uid="uid://sg77xkgxf3vq" path="res://Scripts/DebugAxes.gd" id="8_5vw27"]
 
@@ -29,12 +31,13 @@ glow_enabled = true
 albedo_texture = ExtResource("7_272bh")
 uv1_triplanar = true
 
-[sub_resource type="BoxMesh" id="BoxMesh_lquwl"]
-size = Vector3(100, 100, 100)
-
 [sub_resource type="Resource" id="Resource_lquwl"]
 script = ExtResource("3_1bvp3")
 target_fps = 60
+
+[sub_resource type="BoxMesh" id="BoxMesh_lquwl"]
+flip_faces = true
+size = Vector3(100, 100, 100)
 
 [node name="Node3D" type="Node3D" unique_id=1049858162]
 
@@ -58,9 +61,6 @@ cull_mask = 2
 [node name="HUD" parent="PlayerCharacter" index="5" unique_id=382546849]
 visible = false
 
-[node name="AmortizedProbe" type="Node3D" parent="." unique_id=1394595646 groups=["amortized_probes"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
-
 [node name="CSGBox3D" type="CSGBox3D" parent="." unique_id=1215254807]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -3, 0)
 use_collision = true
@@ -70,13 +70,32 @@ material = SubResource("StandardMaterial3D_5vw27")
 [node name="Node3D" type="Node3D" parent="." unique_id=748083859]
 script = ExtResource("8_5vw27")
 
-[node name="FakeWorld" type="MeshInstance3D" parent="." unique_id=2143960818]
-layers = 2
-cast_shadow = 0
-mesh = SubResource("BoxMesh_lquwl")
-
 [node name="RenderSettings" type="Node" parent="." unique_id=951768315]
 script = ExtResource("2_h2yge")
 settings = SubResource("Resource_lquwl")
+
+[node name="FakeWorld2" type="FakeWorld" parent="." unique_id=698580321 node_paths=PackedStringArray("probe")]
+probe = NodePath("../RealtimeProbe")
+initial_palette = ExtResource("6_272bh")
+layers = 2
+mesh = SubResource("BoxMesh_lquwl")
+
+[node name="RealtimeProbe" type="RealtimeProbe" parent="." unique_id=2139638186 node_paths=PackedStringArray("cameras", "follow_node", "fake_world_node")]
+cameras = [NodePath("Camera3D"), NodePath("Camera3D2"), NodePath("Camera3D3"), NodePath("Camera3D4"), NodePath("Camera3D5"), NodePath("Camera3D6")]
+follow_node = NodePath("../PlayerCharacter")
+fake_world_node = NodePath("../FakeWorld2")
+material = ExtResource("7_5vw27")
+
+[node name="Camera3D" type="Camera3D" parent="RealtimeProbe" unique_id=1983345767]
+
+[node name="Camera3D2" type="Camera3D" parent="RealtimeProbe" unique_id=1822992239]
+
+[node name="Camera3D3" type="Camera3D" parent="RealtimeProbe" unique_id=468998371]
+
+[node name="Camera3D4" type="Camera3D" parent="RealtimeProbe" unique_id=1648299354]
+
+[node name="Camera3D5" type="Camera3D" parent="RealtimeProbe" unique_id=720937546]
+
+[node name="Camera3D6" type="Camera3D" parent="RealtimeProbe" unique_id=286177183]
 
 [editable path="PlayerCharacter"]
