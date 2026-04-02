@@ -128,40 +128,22 @@ impl FakeWorld {
     #[func]
     fn _on_probe_cycle_complete(
         &mut self,
-        _faces: Array<Gd<Image>>,
+        faces: Array<Gd<Image>>,
         _depth_faces: Array<Gd<Image>>,
-        cubemap_rid: Rid,
+        _cubemap_rid: Rid,
     ) {
-        godot_print!(
-            "FakeWorld: Received probe_updated signal with cubemap RID: {:?}",
-            cubemap_rid
-        );
-
-        // Pass the cubemap RID directly to the shader
-        if let Some(ref mut mat) = self.material {
-            // Set the shader parameter directly on the stored material
-            mat.set_shader_parameter("env_cubemap", &cubemap_rid.to_variant());
-
-            // Verify the shader parameter was set correctly
-            let variant = mat.get_shader_parameter("env_cubemap");
-            let rid_from_shader = variant.try_to::<Rid>().unwrap_or(Rid::Invalid);
-            godot_print!(
-                "FakeWorld: Verified env_cubemap shader parameter (RID: {:?})",
-                rid_from_shader
-            );
-
-            if rid_from_shader == cubemap_rid {
-                godot_print!("FakeWorld: Shader parameter matches received RID!");
-            } else {
-                godot_error!("FakeWorld: Shader parameter DOES NOT MATCH received RID!");
-            }
-        } else {
-            godot_error!("FakeWorld: Material is None when trying to set shader parameter!");
+        if faces.len() != 6 {
+            godot_warn!("FakeWorld: Expected 6 face images for cubemap, got {}", faces.len());
+            return;
         }
-        godot_print!(
-            "FakeWorld: env_cubemap shader parameter set (RID: {:?})",
-            cubemap_rid
-        );
+
+        // Create a proper Cubemap resource from the face images
+        let cubemap = Cubemap::create_from_images(&faces);
+        self.cubemap = Some(cubemap.clone());
+
+        if let Some(ref mut mat) = self.material {
+            mat.set_shader_parameter("env_cubemap", &cubemap.to_variant());
+        }
     }
 
     #[func]
@@ -236,19 +218,5 @@ impl FakeWorld {
         let tex =
             ImageTexture::create_from_image(&palette_image).expect("Failed to create ImageTexture");
         tex.upcast()
-    }
-}
-
-impl Drop for FakeWorld {
-    fn drop(&mut self) {
-        // Clean up cubemap RID if it exists
-        if let Some(ref cubemap) = self.cubemap {
-            let rid = cubemap.get_rid();
-            if !rid.is_invalid() {
-                let mut rs = RenderingServer::singleton();
-                rs.free_rid(rid);
-                godot_print!("FakeWorld: Cleaned up cubemap RID: {:?}", rid);
-            }
-        }
     }
 }
