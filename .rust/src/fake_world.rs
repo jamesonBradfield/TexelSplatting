@@ -138,7 +138,8 @@ impl FakeWorld {
         }
 
         // Create a proper Cubemap resource from the face images
-        let cubemap = ImageTextureLayered::create_from_images(&faces).cast::<Cubemap>();
+        let mut cubemap = Cubemap::new_gd();
+        cubemap.create_from_images(&faces);
         self.cubemap = Some(cubemap);
 
         if let Some(ref mut mat) = self.material {
