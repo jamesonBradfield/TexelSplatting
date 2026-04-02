@@ -233,6 +233,11 @@ impl RealtimeProbe {
     }
 
     #[func]
+    pub fn get_total_cameras(&self) -> u64 {
+    self.cameras.len() as u64
+}
+
+    #[func]
     pub fn get_faces_array(&self) -> Array<Gd<Image>> {
         self.faces.iter().cloned().collect()
     }
