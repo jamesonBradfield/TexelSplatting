@@ -94,16 +94,21 @@ impl IMeshInstance3D for FakeWorld {
         } else {
             godot_error!("FakeWorld: Failed to load shader from res://Shaders/fake_world.gdshader");
         }
+
         // Connect to the probe_updated signal using typed signal API
         // The signal is declared in RealtimeProbe and emits: Array<Gd<Image>>, Array<Gd<Image>>, Rid
         // For typed signals, pass ByRef types (Array, Gd<T>) by reference, ByValue types (Rid) by value
         if let Some(probe_node) = self.probe.as_ref().cloned() {
+            // Debug: Verify the node type at runtime
+            let class_name = probe_node.get_class();
+            godot_print!("FakeWorld: Probe node class is '{}'", class_name);
+
             if let Ok(mut probe) = probe_node.try_cast::<RealtimeProbe>() {
                 let callable = self.base().callable("_on_probe_cycle_complete");
                 probe.connect("probe_updated", &callable);
                 godot_print!("FakeWorld: Connected probe_updated signal to _on_probe_cycle_complete");
             } else {
-                godot_warn!("FakeWorld: Probe is not a RealtimeProbe!");
+                godot_warn!("FakeWorld: Probe is not a RealtimeProbe instance! Check scene setup.");
             }
         } else {
             godot_warn!("FakeWorld: No probe assigned!");
@@ -111,11 +116,19 @@ impl IMeshInstance3D for FakeWorld {
     }
 
     fn process(&mut self, _delta: f64) {
-        if let Some(mut probe) = self.probe.clone() {
-            if probe.try_call("update_fake_world_position", &[]).is_err() {
+        if let Some(probe_node) = self.probe.clone() {
+            // Verify type before calling to avoid silent failures
+            if let Ok(mut probe) = probe_node.try_cast::<RealtimeProbe>() {
+                if probe.try_call("update_fake_world_position", &[]).is_err() {
+                    godot_warn!(
+                        "FakeWorld: 'update_fake_world_position' call failed on probe. \
+                         Ensure the node is a RealtimeProbe instance and the DLL is reloaded."
+                    );
+                }
+            } else {
                 godot_warn!(
-                    "FakeWorld: 'update_fake_world_position' not found on probe node. \
-                     Ensure the probe node in the scene is a RealtimeProbe instance."
+                    "FakeWorld: Probe node is not a RealtimeProbe instance. \
+                     Please assign a node with the RealtimeProbe script in the scene tree."
                 );
             }
         }
