@@ -113,7 +113,12 @@ impl IMeshInstance3D for FakeWorld {
 
     fn process(&mut self, _delta: f64) {
         if let Some(mut probe) = self.probe.clone() {
-            probe.call("update_fake_world_position", &[]);
+            if probe.try_call("update_fake_world_position", &[]).is_err() {
+                godot_warn!(
+                    "FakeWorld: 'update_fake_world_position' not found on probe node. \
+                     Ensure the probe node in the scene is a RealtimeProbe instance."
+                );
+            }
         }
     }
 }

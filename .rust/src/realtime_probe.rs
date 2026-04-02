@@ -147,6 +147,12 @@ impl RealtimeProbe {
             return;
         }
 
+        // Defer capture to next frame to ensure SubViewports have rendered
+        self.base_mut().call_deferred("_deferred_capture", &[]);
+    }
+
+    #[func]
+    fn _deferred_capture(&mut self) {
         let origin = self.base().get_global_position();
 
         if let Some(mut fw) = self.fake_world_node.clone() {
