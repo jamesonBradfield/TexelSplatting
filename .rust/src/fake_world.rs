@@ -7,7 +7,6 @@ use godot::classes::{
     IMeshInstance3D,
     Image,
     ImageTexture,
-    ImageTextureLayered,
     Material,
     MeshInstance3D,
     Node3D,
@@ -140,11 +139,11 @@ impl FakeWorld {
         // Create a proper Cubemap resource from the face images
         let mut cubemap = Cubemap::new_gd();
         cubemap.create_from_images(&faces);
-        self.cubemap = Some(cubemap);
 
         if let Some(ref mut mat) = self.material {
             mat.set_shader_parameter("env_cubemap", &cubemap.to_variant());
         }
+        self.cubemap = Some(cubemap);
     }
 
     #[func]
