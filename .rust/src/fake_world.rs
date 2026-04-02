@@ -3,13 +3,13 @@ use godot::classes::{
     geometry_instance_3d::ShadowCastingSetting,
     image::Format,
     Camera3D,
-    Cubemap,
     IMeshInstance3D,
     Image,
     ImageTexture,
     Material,
     MeshInstance3D,
     Node3D,
+    RenderingServer,
     Shader,
     ShaderMaterial,
     Texture2D,
@@ -26,7 +26,6 @@ pub struct FakeWorld {
     initial_palette: Option<Gd<Texture2D>>,
 
     player_camera: Option<Gd<Camera3D>>,
-    cubemap: Option<Gd<Cubemap>>,
     material: Option<Gd<ShaderMaterial>>,
     pal: Option<Gd<Texture2D>>,
 
@@ -40,7 +39,6 @@ impl IMeshInstance3D for FakeWorld {
             probe: None,
             initial_palette: None,
             player_camera: None,
-            cubemap: None,
             material: None,
             pal: None,
             base,
@@ -53,7 +51,6 @@ impl IMeshInstance3D for FakeWorld {
 
         let mut tree = self.base().get_tree().unwrap();
 
-        // Use string literals directly; gdext handles the AsArg<StringName> conversion automatically
         let cameras = tree.get_nodes_in_group("player_cameras");
         if !cameras.is_empty() {
             self.player_camera = cameras.at(0).try_cast::<Camera3D>().ok();
@@ -69,10 +66,20 @@ impl IMeshInstance3D for FakeWorld {
             }
         }
 
-        // Create material if it doesn't exist
+        if self.pal.is_none() {
+            self.pal = self.initial_palette.clone();
+        }
+
+        if self.material.is_none() {
+            if let Some(mat) = self.base().get_material_override() {
+                self.material = mat.try_cast::<ShaderMaterial>().ok();
+            } else if let Some(mat) = self.base().get_active_material(0) {
+                self.material = mat.try_cast::<ShaderMaterial>().ok();
+            }
+        }
+
         if self.material.is_none() {
             self.material = Some(ShaderMaterial::new_gd());
-            godot_print!("FakeWorld: Created new ShaderMaterial");
         }
 
         if let Some(shader) = godot::classes::ResourceLoader::singleton()
@@ -85,51 +92,28 @@ impl IMeshInstance3D for FakeWorld {
             if let Some(palette) = &self.pal {
                 mat.set_shader_parameter("palette", &palette.to_variant());
             }
-            mat.set_shader_parameter("env_cubemap", &Rid::Invalid.to_variant());
-
-            // Set material override on the MeshInstance3D itself (self.base())
-            self.base_mut().set_material_override(&mat.upcast::<Material>());
-            // Note: We don't need to store the parent Node3D here
-            // The parent_node field is unused and can be removed if needed
-        } else {
-            godot_error!("FakeWorld: Failed to load shader from res://Shaders/fake_world.gdshader");
+            
+            RenderingServer::singleton().material_set_param(mat.get_rid(), "env_cubemap", &Rid::Invalid.to_variant());
+            
+            let mat_gd = mat.upcast::<Material>();
+            self.base_mut().set_material_override(&mat_gd);
         }
 
-        // Connect to the probe_updated signal using typed signal API
-        // The signal is declared in RealtimeProbe and emits: Array<Gd<Image>>, Array<Gd<Image>>, Rid
-        // For typed signals, pass ByRef types (Array, Gd<T>) by reference, ByValue types (Rid) by value
         if let Some(probe_node) = self.probe.as_ref().cloned() {
-            // Debug: Verify the node type at runtime
-            let class_name = probe_node.get_class();
-            godot_print!("FakeWorld: Probe node class is '{}'", class_name);
-
             if let Ok(mut probe) = probe_node.try_cast::<RealtimeProbe>() {
                 let callable = self.base().callable("_on_probe_cycle_complete");
-                probe.connect("probe_updated", &callable);
-                godot_print!("FakeWorld: Connected probe_updated signal to _on_probe_cycle_complete");
-            } else {
-                godot_warn!("FakeWorld: Probe is not a RealtimeProbe instance! Check scene setup.");
+                if !probe.is_connected("probe_updated", &callable) {
+                    probe.connect("probe_updated", &callable);
+                }
             }
-        } else {
-            godot_warn!("FakeWorld: No probe assigned!");
         }
     }
 
     fn process(&mut self, _delta: f64) {
         if let Some(probe_node) = self.probe.clone() {
-            // Verify type before calling to avoid silent failures
-            if let Ok(mut probe) = probe_node.try_cast::<RealtimeProbe>() {
-                if probe.try_call("update_fake_world_position", &[]).is_err() {
-                    godot_warn!(
-                        "FakeWorld: 'update_fake_world_position' call failed on probe. \
-                         Ensure the node is a RealtimeProbe instance and the DLL is reloaded."
-                    );
-                }
-            } else {
-                godot_warn!(
-                    "FakeWorld: Probe node is not a RealtimeProbe instance. \
-                     Please assign a node with the RealtimeProbe script in the scene tree."
-                );
+            let probe_pos = probe_node.get_global_position();
+            if self.base().get_global_position() != probe_pos {
+                self.base_mut().set_global_position(probe_pos);
             }
         }
     }
@@ -140,23 +124,12 @@ impl FakeWorld {
     #[func]
     fn _on_probe_cycle_complete(
         &mut self,
-        faces: Array<Gd<Image>>,
-        _depth_faces: Array<Gd<Image>>,
-        _cubemap_rid: Rid,
+        _faces: Array<Gd<Image>>,
+        cubemap_rid: Rid,
     ) {
-        if faces.len() != 6 {
-            godot_warn!("FakeWorld: Expected 6 face images for cubemap, got {}", faces.len());
-            return;
-        }
-
-        // Create a proper Cubemap resource from the face images
-        let mut cubemap = Cubemap::new_gd();
-        cubemap.create_from_images(&faces);
-
         if let Some(ref mut mat) = self.material {
-            mat.set_shader_parameter("env_cubemap", &cubemap.to_variant());
+            RenderingServer::singleton().material_set_param(mat.get_rid(), "env_cubemap", &cubemap_rid.to_variant());
         }
-        self.cubemap = Some(cubemap);
     }
 
     #[func]
@@ -171,11 +144,12 @@ impl FakeWorld {
 
     #[func]
     pub fn get_cubemap_rid(&self) -> Rid {
-        // Returns the cubemap RID for debugging
-        self.cubemap
-            .as_ref()
-            .map(|c| c.get_rid())
-            .unwrap_or(Rid::Invalid)
+        if let Some(ref mat) = self.material {
+            let variant = RenderingServer::singleton().material_get_param(mat.get_rid(), "env_cubemap");
+            variant.try_to::<Rid>().unwrap_or(Rid::Invalid)
+        } else {
+            Rid::Invalid
+        }
     }
 
     #[func]

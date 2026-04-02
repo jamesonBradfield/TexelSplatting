@@ -74,28 +74,17 @@ script = ExtResource("8_5vw27")
 script = ExtResource("2_h2yge")
 settings = SubResource("Resource_lquwl")
 
-[node name="FakeWorld2" type="FakeWorld" parent="." unique_id=698580321 node_paths=PackedStringArray("probe")]
+[node name="FakeWorld" type="FakeWorld" parent="." unique_id=698580321 node_paths=PackedStringArray("probe")]
 probe = NodePath("../RealtimeProbe")
 initial_palette = ExtResource("6_272bh")
 layers = 2
 mesh = SubResource("BoxMesh_lquwl")
 
-[node name="RealtimeProbe" type="RealtimeProbe" parent="." unique_id=2139638186 node_paths=PackedStringArray("cameras", "follow_node", "fake_world_node")]
-cameras = [NodePath("Camera3D"), NodePath("Camera3D2"), NodePath("Camera3D3"), NodePath("Camera3D4"), NodePath("Camera3D5"), NodePath("Camera3D6")]
+[node name="RealtimeProbe" type="RealtimeProbe" parent="." unique_id=2139638186 node_paths=PackedStringArray("follow_node", "fake_world_node")]
 follow_node = NodePath("../PlayerCharacter")
-fake_world_node = NodePath("../FakeWorld2")
+fake_world_node = NodePath("../FakeWorld")
 material = ExtResource("7_5vw27")
-
-[node name="Camera3D" type="Camera3D" parent="RealtimeProbe" unique_id=1983345767]
-
-[node name="Camera3D2" type="Camera3D" parent="RealtimeProbe" unique_id=1822992239]
-
-[node name="Camera3D3" type="Camera3D" parent="RealtimeProbe" unique_id=468998371]
-
-[node name="Camera3D4" type="Camera3D" parent="RealtimeProbe" unique_id=1648299354]
-
-[node name="Camera3D5" type="Camera3D" parent="RealtimeProbe" unique_id=720937546]
-
-[node name="Camera3D6" type="Camera3D" parent="RealtimeProbe" unique_id=286177183]
+tick_rate_ms = 16.67
+cull_mask = 1
 
 [editable path="PlayerCharacter"]

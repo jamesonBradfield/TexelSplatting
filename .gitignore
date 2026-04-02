@@ -11,6 +11,7 @@ export_presets.cfg
 # Rust / GDExtension
 # ==============================
 target/
+bin/
 Cargo.lock
 **/*.pdb
 **/*.exp

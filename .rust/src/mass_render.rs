@@ -98,8 +98,11 @@ impl MassRenderingNode {
             let basis = transform.basis;
             let origin = transform.origin;
 
-            // We extend from a fixed-size array which is better optimized
-            // than individual push calls (often vectorizes well)
+            // Godot 4 Multimesh TRANSFORM_3D expects a 3x4 row-major matrix (12 floats)
+            // Row 0: basis.x.x, basis.y.x, basis.z.x, origin.x
+            // Row 1: basis.x.y, basis.y.y, basis.z.y, origin.y
+            // Row 2: basis.x.z, basis.y.z, basis.z.z, origin.z
+            // In this version of godot-rust, basis vectors are accessed via basis.rows[0..2]
             floats.extend([
                 basis.rows[0].x,
                 basis.rows[1].x,

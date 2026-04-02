@@ -1,6 +1,20 @@
+[jobs.build-debug]
+command = ["cmd.exe", "/c", "build.bat", "debug"]
+need_stdout = true
+allow_warnings = true
+watch = [".rust/src"]
+
+[jobs.build-release]
+command = ["cmd.exe", "/c", "build.bat", "release"]
+need_stdout = true
+allow_warnings = true
+watch = [".rust/src"]
+
 [jobs.clippy]
-command = ["cargo", "clippy", "--all-targets", "--all-features", "--", "-D", "warnings"]
+command = ["cargo", "clippy", "--manifest-path", ".rust/Cargo.toml", "--all-targets", "--all-features", "--", "-D", "warnings"]
 need_stdout = false
+watch = [".rust/src"]
 
 [jobs.check]
-command = ["cargo", "check", "--all-targets", "--", "-j", "12"] # Manually set jobs if needed
+command = ["cargo", "check", "--manifest-path", ".rust/Cargo.toml", "--all-targets", "--", "-j", "12"]
+watch = [".rust/src"]
