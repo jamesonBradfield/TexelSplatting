@@ -115,71 +115,71 @@ impl RealtimeProbe {
     }
 
     /// Reads captured images from sub-views, reconstructs the cubemap, updates the material,
-    // AI! Can we comment the function's content?    /// and emits the probe_updated signal.
+    /// and emits the probe_updated signal.
     #[func]
     fn _deferred_read_and_update(&mut self) {
-        let mut current_capture: Vec<Gd<Image>> = Vec::with_capacity(6);
+        // let mut current_capture: Vec<Gd<Image>> = Vec::with_capacity(6);
 
-        for i in 0..6 {
-            let camera = self.cameras.at(i);
-            if let Some(vp) = camera
-                .get_parent()
-                .and_then(|p| p.try_cast::<SubViewport>().ok())
-            {
-                if let Some(texture) = vp.get_texture() {
-                    if let Some(image) = texture.get_image() {
-                        let mut img: Gd<Image> =
-                            image.duplicate().expect("Failed to duplicate").cast();
-                        if i != 3 {
-                            img.flip_x();
-                        } else {
-                            img.flip_y();
-                        }
-                        current_capture.push(img);
-                    }
-                }
-            }
-        }
+        // for i in 0..6 {
+        //     let camera = self.cameras.at(i);
+        //     if let Some(vp) = camera
+        //         .get_parent()
+        //         .and_then(|p| p.try_cast::<SubViewport>().ok())
+        //     {
+        //         if let Some(texture) = vp.get_texture() {
+        //             if let Some(image) = texture.get_image() {
+        //                 let mut img: Gd<Image> =
+        //                     image.duplicate().expect("Failed to duplicate").cast();
+        //                 if i != 3 {
+        //                     img.flip_x();
+        //                 } else {
+        //                     img.flip_y();
+        //                 }
+        //                 current_capture.push(img);
+        //             }
+        //         }
+        //     }
+        // }
 
-        // Show the fake world again
-        if let Some(mut fw) = self.fake_world_node.clone() {
-            fw.set_visible(true);
-            // Ensure it's perfectly synced after capture
-            fw.set_global_position(self.base().get_global_position());
-        }
+        // // Show the fake world again
+        // if let Some(mut fw) = self.fake_world_node.clone() {
+        //     fw.set_visible(true);
+        //     // Ensure it's perfectly synced after capture
+        //     fw.set_global_position(self.base().get_global_position());
+        // }
 
-        if current_capture.len() == 6 {
-            self.faces = current_capture;
-            let mut rs = RenderingServer::singleton();
+        // if current_capture.len() == 6 {
+        //     self.faces = current_capture;
+        //     let mut rs = RenderingServer::singleton();
 
-            if self.cubemap_rid.is_invalid() {
-                let mut image_array = Array::<Gd<Image>>::new();
-                for img in &self.faces {
-                    image_array.push(img);
-                }
-                self.cubemap_rid =
-                    rs.texture_2d_layered_create(&image_array, TextureLayeredType::CUBEMAP);
-            } else {
-                for (i, img) in self.faces.iter().enumerate() {
-                    rs.texture_2d_update(self.cubemap_rid, img, i as i32);
-                }
-            }
+        //     if self.cubemap_rid.is_invalid() {
+        //         let mut image_array = Array::<Gd<Image>>::new();
+        //         for img in &self.faces {
+        //             image_array.push(img);
+        //         }
+        //         self.cubemap_rid =
+        //             rs.texture_2d_layered_create(&image_array, TextureLayeredType::CUBEMAP);
+        //     } else {
+        //         for (i, img) in self.faces.iter().enumerate() {
+        //             rs.texture_2d_update(self.cubemap_rid, img, i as i32);
+        //         }
+        //     }
 
-            let cubemap_rid = self.cubemap_rid;
-            let faces_array = self.get_faces_array();
-            self.signals()
-                .probe_updated()
-                .emit(&faces_array, cubemap_rid);
+        //     let cubemap_rid = self.cubemap_rid;
+        //     let faces_array = self.get_faces_array();
+        //     self.signals()
+        //         .probe_updated()
+        //         .emit(&faces_array, cubemap_rid);
 
-            // Directly update the material parameter
-            if let Some(mat) = self.material.clone() {
-                RenderingServer::singleton().material_set_param(
-                    mat.get_rid(),
-                    "env_cubemap",
-                    &self.cubemap_rid.to_variant(),
-                );
-            }
-        }
+        //     // Directly update the material parameter
+        //     if let Some(mat) = self.material.clone() {
+        //         RenderingServer::singleton().material_set_param(
+        //             mat.get_rid(),
+        //             "env_cubemap",
+        //             &self.cubemap_rid.to_variant(),
+        //         );
+        //     }
+        // }
     }
 
     #[func]
