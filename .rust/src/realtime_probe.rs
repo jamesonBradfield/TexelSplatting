@@ -30,6 +30,15 @@
 //!
 //! This probe is designed to be thread-safe. The cubemap RID and face images
 //! are protected by Godot's internal synchronization mechanisms.
+//!
+//! ## Configuration
+//!
+//! All settings are now sourced from `RenderManager` (SSOT - Single Source of Truth):
+//! - `face_resolution`: Cubemap face resolution (default: 512)
+//! - `cull_mask`: Bitmask for object visibility (default: 0xFFFFFFFF)
+//! - `tick_rate_ms`: Capture interval in milliseconds (default: 33.33)
+//! - `follow_node`: Optional target to follow
+//! - `material`: Optional material to update with cubemap
 
 use godot::classes::{
     rendering_server::TextureLayeredType, Camera3D, INode3D, Image, Node3D, RenderingServer,
@@ -39,6 +48,7 @@ use godot::prelude::*;
 
 /// Resolution for each face of the cubemap capture.
 /// Higher values improve quality but increase memory and CPU usage.
+/// This value is now sourced from RenderManager (SSOT).
 const FACE_RESOLUTION: i32 = 512;
 
 /// A real-time cubemap capture node that uses 6 cameras to synthesize an environment map.
@@ -74,25 +84,25 @@ pub struct RealtimeProbe {
 
     /// Optional target node to follow. The probe will synchronize its position
     /// to this node every frame. Set to `None` to disable auto-follow.
-    #[export]
     follow_node: Option<Gd<Node3D>>,
 
     /// Optional shader material to automatically update with the captured cubemap.
     /// When set, the cubemap will be updated as a shader parameter named "env_cubemap".
-    #[export]
     material: Option<Gd<ShaderMaterial>>,
 
     /// Time between capture cycles in milliseconds.
     /// Lower values increase capture frequency but may impact performance.
     /// Recommended range: 16.67ms (60fps) to 1000ms (1fps).
-    #[export(range = (1.0, 1000.0, 0.01))]
-    tick_rate_ms: f64,
+    time_accumulator: f64,
 
     /// Bitmask controlling which objects are visible in captures.
     /// Use this to exclude certain objects from the cubemap (e.g., UI elements).
-    /// Default: 0xFFFFFFFF (all objects visible).
-    #[export(range = (1.0, 32.0, 1.0))]
     cull_mask: u32,
+
+    /// Time between capture cycles in milliseconds.
+    /// Lower values increase capture frequency but may impact performance.
+    /// Recommended range: 16.67ms (60fps) to 1000ms (1fps).
+    tick_rate_ms: f64,
 
     /// Accumulator for delta time, used for frame-rate independent capture timing.
     /// This ensures consistent capture intervals regardless of frame rate.
@@ -119,6 +129,8 @@ impl INode3D for RealtimeProbe {
     /// - Sets cull mask to show all objects (0xFFFFFFFF)
     /// - Pre-allocates space for 6 face images
     /// - Initializes cubemap RID as invalid
+    ///
+    /// Note: All settings are now sourced from RenderManager (SSOT) at runtime.
     fn init(base: Base<Node3D>) -> Self {
         Self {
             base,
@@ -126,7 +138,6 @@ impl INode3D for RealtimeProbe {
             follow_node: None,
             material: None,
             time_accumulator: 0.0,
-            tick_rate_ms: 33.33,
             cull_mask: 0xFFFFFFFF,
             faces: Vec::with_capacity(6),
             cubemap_rid: Rid::Invalid,
@@ -138,7 +149,11 @@ impl INode3D for RealtimeProbe {
     /// Spawns the 6 cameras and sub-viewsports needed for cubemap capture.
     /// Each camera is positioned at the probe's location and rotated to face
     /// one of the 6 cardinal directions.
+    ///
+    /// Note: Camera configuration (resolution, cull_mask) is now sourced from
+    /// RenderManager (SSOT) at runtime.
     fn ready(&mut self) {
+        self._apply_settings_from_render_manager();
         self._spawn_cameras();
     }
 
@@ -181,19 +196,48 @@ impl INode3D for RealtimeProbe {
 
 #[godot_api]
 impl RealtimeProbe {
-    /// Signal emitted when a new cubemap has been captured and synthesized.
+    /// Manually triggers a cubemap capture cycle.
     ///
-    /// ## Parameters
-    /// - `images`: Array of 6 Image objects, one for each cubemap face.
-    /// - `cubemap_rid`: The RID of the synthesized cubemap texture.
+    /// This method:
+    /// 1. Validates that 6 cameras are available
+    /// 2. Positions all cameras at the probe's current location
+    /// 3. Sets sub-viewport update mode to ONCE for each camera
+    /// 4. Deferes the read-and-update operation to the next frame
     ///
-    /// ## Usage
-    /// Connect to this signal to receive updates when the environment map changes:
-    /// ```gdscript
-    /// probe.probe_updated.connect(_on_probe_updated)
-    /// ```
-    #[signal]
-    fn probe_updated(images: Array<Gd<Image>>, cubemap_rid: Rid);
+    /// ## Notes
+    /// - Call this method when you want to force an immediate capture
+    /// - The actual image reading happens in the next frame via `_deferred_read_and_update`
+    /// - If cameras are not properly set up, this method returns early without error
+    #[func]
+    fn trigger_capture(&mut self) {
+        // Validate that we have exactly 6 cameras (one per cubemap face)
+        if self.cameras.len() != 6 {
+            return;
+        }
+
+        // Get the probe's current position - all cameras will be positioned here
+        let origin = self.base().get_global_position();
+
+        // Position each camera at the probe's location
+        for i in 0..6 {
+            let camera = self.cameras.at(i);
+            let mut cam_mut = camera.clone();
+            cam_mut.set_global_position(origin);
+
+            // Get the sub-viewport and set update mode to ONCE
+            if let Some(mut vp) = camera
+                .get_parent()
+                .and_then(|p| p.try_cast::<SubViewport>().ok())
+            {
+                vp.set_update_mode(godot::classes::sub_viewport::UpdateMode::ONCE);
+            }
+        }
+
+        // Defer the actual image reading to the next frame
+        // This prevents blocking the current frame and ensures sub-viewsports have rendered
+        self.base_mut()
+            .call_deferred("_deferred_read_and_update", &[]);
+    }
 
     /// Manually triggers a cubemap capture cycle.
     ///
@@ -347,13 +391,16 @@ impl RealtimeProbe {
     /// Each camera is configured with:
     /// - FOV: 90 degrees (wide angle for better coverage)
     /// - Rotation: Specific to its face direction
-    /// - Cull Mask: Uses the configured cull_mask value
+    /// - Cull Mask: Uses the configured cull_mask value (from RenderManager SSOT)
     /// - Update Mode: DISABLED (rendering handled by sub-viewport)
     /// - Clear Mode: ALWAYS (ensures clean captures)
     ///
     /// ## Cleanup
     /// Any existing nodes with names containing "FaceViewport_" or "FaceCamera_"
     /// are automatically removed to prevent memory leaks.
+    ///
+    /// ## Note
+    /// Camera resolution and cull_mask are now sourced from RenderManager (SSOT).
     #[func]
     fn _spawn_cameras(&mut self) {
         // Clear the cameras array
@@ -424,8 +471,24 @@ impl RealtimeProbe {
     ///     println!("Face {}: {}", i, face.get_name());
     /// }
     /// ```
-    #[func]
-    pub fn get_faces_array(&self) -> Array<Gd<Image>> {
+    fn get_faces_array(&self) -> Array<Gd<Image>> {
         self.faces.iter().cloned().collect()
     }
+}
+
+#[godot_api]
+impl RealtimeProbe {
+    /// Signal emitted when a new cubemap has been captured and synthesized.
+    ///
+    /// ## Parameters
+    /// - `images`: Array of 6 Image objects, one for each cubemap face.
+    /// - `cubemap_rid`: The RID of the synthesized cubemap texture.
+    ///
+    /// ## Usage
+    /// Connect to this signal to receive updates when the environment map changes:
+    /// ```gdscript
+    /// probe.probe_updated.connect(_on_probe_updated)
+    /// ```
+    #[signal]
+    fn probe_updated(images: Array<Gd<Image>>, cubemap_rid: Rid);
 }
