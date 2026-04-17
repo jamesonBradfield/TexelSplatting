@@ -3,8 +3,6 @@
 [ext_resource type="Script" uid="uid://cpwnb74w1qkkt" path="res://Scripts/RenderManager.gd" id="2_h2yge"]
 [ext_resource type="Script" uid="uid://b4wbouohnwogk" path="res://Scripts/RenderSettings.gd" id="3_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://bwggrf7sbmkcv" path="res://addons/PlayerCharacter/player_character_scene.tscn" id="6_7mycd"]
-[ext_resource type="Texture2D" uid="uid://bw3pfwi7ij06l" path="res://palettes/aap-64-1x.png" id="6_272bh"]
-[ext_resource type="Material" uid="uid://eahlk6f0yfvp" path="res://Shaders/fake_world_mat.tres" id="7_5vw27"]
 [ext_resource type="Texture2D" uid="uid://dfip8lppmomm5" path="res://addons/kenney_prototype_textures/dark/texture_01.png" id="7_272bh"]
 [ext_resource type="Script" uid="uid://sg77xkgxf3vq" path="res://Scripts/DebugAxes.gd" id="8_5vw27"]
 
@@ -34,10 +32,7 @@ uv1_triplanar = true
 [sub_resource type="Resource" id="Resource_lquwl"]
 script = ExtResource("3_1bvp3")
 target_fps = 60
-
-[sub_resource type="BoxMesh" id="BoxMesh_lquwl"]
-flip_faces = true
-size = Vector3(100, 100, 100)
+face_resolution = 256
 
 [node name="Node3D" type="Node3D" unique_id=1049858162]
 
@@ -74,17 +69,15 @@ script = ExtResource("8_5vw27")
 script = ExtResource("2_h2yge")
 settings = SubResource("Resource_lquwl")
 
-[node name="FakeWorld" type="FakeWorld" parent="." unique_id=698580321 node_paths=PackedStringArray("probe")]
-probe = NodePath("../RealtimeProbe")
-initial_palette = ExtResource("6_272bh")
+[node name="ProjectionProbe" type="ProjectionProbe" parent="." unique_id=698580321 node_paths=PackedStringArray("probe")]
+probe = NodePath("../GridProbe")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
 layers = 2
-mesh = SubResource("BoxMesh_lquwl")
 
-[node name="RealtimeProbe" type="RealtimeProbe" parent="." unique_id=2139638186 node_paths=PackedStringArray("follow_node", "fake_world_node")]
+[node name="GridProbe" type="RealtimeProbe" parent="." unique_id=-1155329110]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+
+[node name="RealtimeProbe" type="RealtimeProbe" parent="." unique_id=2139638186 node_paths=PackedStringArray("follow_node")]
 follow_node = NodePath("../PlayerCharacter")
-fake_world_node = NodePath("../FakeWorld")
-material = ExtResource("7_5vw27")
-tick_rate_ms = 16.67
-cull_mask = 1
 
 [editable path="PlayerCharacter"]
